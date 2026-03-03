@@ -102,6 +102,8 @@ async function main() {
   const send = (payload) => {
     server.stdin.write(`${JSON.stringify(payload)}\n`);
   };
+  const PROMPTS_LIST_ID = 2;
+  const TOOLS_LIST_ID = 3;
 
   try {
     await delay(2000);
@@ -132,19 +134,19 @@ async function main() {
 
     stdout = '';
     send({ jsonrpc: '2.0', method: 'notifications/initialized' });
-    send({ jsonrpc: '2.0', id: 2, method: 'prompts/list', params: {} });
+    send({ jsonrpc: '2.0', id: PROMPTS_LIST_ID, method: 'prompts/list', params: {} });
     await delay(1000);
 
-    const prompts = parseResponses(stdout).find((message) => message?.id === 2 && Array.isArray(message?.result?.prompts));
+    const prompts = parseResponses(stdout).find((message) => message?.id === PROMPTS_LIST_ID && Array.isArray(message?.result?.prompts));
     if (!prompts || prompts.result.prompts.length < 2) {
       throw new Error('missing prompts/list response');
     }
 
     stdout = '';
-    send({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });
+    send({ jsonrpc: '2.0', id: TOOLS_LIST_ID, method: 'tools/list', params: {} });
 
     await delay(1500);
-    const tools = parseResponses(stdout).find((message) => message?.id === 2 && Array.isArray(message?.result?.tools));
+    const tools = parseResponses(stdout).find((message) => message?.id === TOOLS_LIST_ID && Array.isArray(message?.result?.tools));
     if (!tools || tools.result.tools.length === 0) {
       throw new Error('missing tools/list response');
     }

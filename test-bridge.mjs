@@ -360,10 +360,15 @@ async function main() {
     const connStatusResponses = parseResponses(stdout);
     if (connStatusResponses.length > 0) {
       const text = connStatusResponses[0].result?.content?.map(c => c.text).join('') || '';
-      if (text.includes('true') || text.includes('connected')) {
-        ok('get_editor_status shows connected after godot_ready');
-      } else {
-        fail('Connected status', 'Expected connected=true, got: ' + text.substring(0, 200));
+      try {
+        const status = JSON.parse(text);
+        if (status?.connected === true) {
+          ok('get_editor_status shows connected after godot_ready');
+        } else {
+          fail('Connected status', 'Expected connected=true, got: ' + text.substring(0, 200));
+        }
+      } catch {
+        fail('Connected status', 'Expected JSON status payload, got: ' + text.substring(0, 200));
       }
     }
 
@@ -398,6 +403,12 @@ async function main() {
         ok('Correct tool invocation routed to legacy bridge command');
       } else {
         fail('Tool routing', `Expected "create_scene", got "${invokeMsg.tool}"`);
+      }
+
+      if (invokeMsg.args?.scenePath === 'res://test_bridge.tscn' && invokeMsg.args?.rootNodeType === 'Node2D') {
+        ok('Bridge tool arguments normalized to camelCase before dispatch');
+      } else {
+        fail('Bridge arg normalization', JSON.stringify(invokeMsg.args));
       }
 
       // Send back a mock result
