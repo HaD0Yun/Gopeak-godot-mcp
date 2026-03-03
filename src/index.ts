@@ -21,6 +21,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ErrorCode,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
   ListToolsRequestSchema,
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
@@ -32,6 +34,7 @@ import { GodotDAPClient, createDAPTools, handleDAPTool } from './dap_client.js';
 import { mapProject } from './gdscript_parser.js';
 import { serveVisualization, setProjectPath, stopVisualizationServer } from './visualizer-server.js';
 import { GodotBridge, getDefaultBridge } from './godot-bridge.js';
+import { getPrompt, listPrompts } from './prompts.js';
 
 // Check if debug mode is enabled
 const DEBUG_MODE: boolean = process.env.DEBUG === 'true';
@@ -239,6 +242,7 @@ class GodotServer {
       {
         capabilities: {
           tools: {},
+          prompts: {},
           resources: {},
         },
       }
@@ -993,6 +997,14 @@ class GodotServer {
    * Set up the tool handlers for the MCP server
    */
   private setupToolHandlers() {
+    this.server.setRequestHandler(ListPromptsRequestSchema, async (request) => {
+      return listPrompts(request.params?.cursor);
+    });
+
+    this.server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+      return getPrompt(request.params.name, request.params.arguments);
+    });
+
     // Define available tools
     this.server.setRequestHandler(ListToolsRequestSchema, async (request) => {
       const allTools: MCPToolDefinition[] = [

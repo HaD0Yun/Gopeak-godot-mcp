@@ -16,10 +16,16 @@
   ],
   "scripts": {
     "build": "tsc && node scripts/build-visualizer.js && node scripts/build.js",
+    "typecheck": "tsc --noEmit",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "test:integration": "node test-bridge.mjs",
+    "test:ci": "npm run test:smoke",
+    "ci": "npm run build && npm run typecheck && npm run test:ci",
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
-    "pack": "npm pack --dry-run"
+    "pack": "npm pack --dry-run",
+    "version:bump": "node scripts/bump-version.mjs"
   },
   "engines": {
     "node": ">=18"

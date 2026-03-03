@@ -154,6 +154,35 @@ GoPeak also exposes two CLI bin names:
 
 ---
 
+## CI
+
+GitHub Actions runs on push/PR and executes:
+
+1. `npm run build`
+2. `npx tsc --noEmit`
+3. `npm run test:ci`
+
+Run the same checks locally:
+
+```bash
+npm run ci
+```
+
+---
+
+## Versioning & Release
+
+Use the built-in bump script to keep `package.json` and `server.json` in sync:
+
+```bash
+node scripts/bump-version.mjs patch
+node scripts/bump-version.mjs minor --dry-run
+```
+
+Full release checklist: [`docs/release-process.md`](docs/release-process.md).
+
+---
+
 ## Addons (Recommended)
 
 ### Auto Reload + Editor Bridge + Runtime Addon installer
@@ -272,6 +301,8 @@ Visualize your entire project architecture with `visualizer.map` (`map_project` 
 
 ## Docs & Project Links
 
+- [Architecture (MCP Platform Direction)](docs/architecture.md)
+- [Platform Roadmap (P1/P2/P3)](docs/platform-roadmap.md)
 - [CHANGELOG](CHANGELOG.md)
 - [ROADMAP](ROADMAP.md)
 - [CONTRIBUTING](CONTRIBUTING.md)

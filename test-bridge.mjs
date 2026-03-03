@@ -4,6 +4,7 @@
  * Tests: MCP server startup, WebSocket bridge, tool routing
  */
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:net';
 import { WebSocket } from 'ws';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -12,10 +13,8 @@ const bridgePortRaw = process.env.GODOT_BRIDGE_PORT || process.env.MCP_BRIDGE_PO
 const parsedBridgePort = Number.parseInt(bridgePortRaw || '', 10);
 const BRIDGE_PORT = Number.isInteger(parsedBridgePort) && parsedBridgePort >= 1 && parsedBridgePort <= 65535
   ? parsedBridgePort
-  : 6505;
+  : null;
 const BRIDGE_HOST = process.env.GOPEAK_BRIDGE_HOST || process.env.GODOT_BRIDGE_HOST || '127.0.0.1';
-const GODOT_WS_URL = `ws://${BRIDGE_HOST}:${BRIDGE_PORT}/godot`;
-const VIZ_WS_URL = `ws://${BRIDGE_HOST}:${BRIDGE_PORT}/visualizer`;
 const GODOT_PATH = process.env.GODOT_PATH || '/home/doyun/Apps/godot-4.6-rc2/Godot_v4.6-rc2_linux.x86_64';
 
 let passed = 0;
@@ -54,14 +53,46 @@ function chooseTool(toolNames, preferred) {
   return preferred.find(Boolean);
 }
 
+async function reserveBridgePort() {
+  if (BRIDGE_PORT) {
+    return BRIDGE_PORT;
+  }
+
+  return await new Promise((resolve, reject) => {
+    const server = createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, BRIDGE_HOST, () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        server.close(() => reject(new Error('Failed to reserve bridge port')));
+        return;
+      }
+
+      const { port } = address;
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve(port);
+      });
+    });
+  });
+}
+
 // --- Main test ---
 async function main() {
   console.log('\n🧪 Godot MCP Bridge Integration Test\n');
+  const bridgePort = await reserveBridgePort();
+  const godotWsUrl = `ws://${BRIDGE_HOST}:${bridgePort}/godot`;
+  const vizWsUrl = `ws://${BRIDGE_HOST}:${bridgePort}/visualizer`;
 
   // 1. Start MCP server
   console.log('📦 Starting MCP server...');
   const server = spawn('node', [MCP_SERVER], {
-    env: { ...process.env, GODOT_PATH, DEBUG: 'true', GOPEAK_TOOL_PROFILE: 'compact', GOPEAK_BRIDGE_PORT: String(BRIDGE_PORT), GOPEAK_BRIDGE_HOST: BRIDGE_HOST },
+    env: { ...process.env, GODOT_PATH, DEBUG: 'true', GOPEAK_TOOL_PROFILE: 'compact', GOPEAK_BRIDGE_PORT: String(bridgePort), GOPEAK_BRIDGE_HOST: BRIDGE_HOST },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
@@ -98,6 +129,11 @@ async function main() {
     if (caps.serverInfo) {
       ok(`Server: ${caps.serverInfo.name} v${caps.serverInfo.version}`);
     }
+    if (caps.capabilities?.prompts) {
+      ok('Server advertises prompts capability');
+    } else {
+      fail('prompts capability', 'Missing capabilities.prompts in initialize response');
+    }
   } else {
     fail('MCP initialize', 'No valid response. stdout: ' + stdout.substring(0, 200));
   }
@@ -107,6 +143,60 @@ async function main() {
   await delay(500);
 
   // 4. List tools
+  console.log('\n🧠 Testing MCP prompts...');
+  stdout = '';
+  server.stdin.write(rpcMsg('prompts/list'));
+  await delay(1000);
+
+  const promptListResponses = parseResponses(stdout);
+  const promptListResult = promptListResponses.find(response => response.result?.prompts)?.result;
+  if (promptListResult?.prompts?.length >= 2) {
+    ok(`prompts/list returned ${promptListResult.prompts.length} prompt(s)`);
+    const promptNames = new Set(promptListResult.prompts.map(prompt => prompt.name));
+    if (promptNames.has('godot.scene_bootstrap') && promptNames.has('godot.debug_triage')) {
+      ok('Expected Godot prompts are listed');
+    } else {
+      fail('prompt listing', `Expected godot.scene_bootstrap and godot.debug_triage, got: ${Array.from(promptNames).join(', ')}`);
+    }
+  } else {
+    fail('prompts/list', 'No valid prompt list response');
+  }
+
+  stdout = '';
+  server.stdin.write(rpcMsg('prompts/get', {
+    name: 'godot.scene_bootstrap',
+    arguments: {
+      project_path: '/tmp/demo-project',
+      scene_path: 'res://scenes/Player.tscn',
+    },
+  }));
+  await delay(1000);
+
+  const promptGetResponses = parseResponses(stdout);
+  const promptGetResult = promptGetResponses.find(response => response.result?.messages)?.result;
+  if (promptGetResult?.messages?.length > 0) {
+    const promptText = promptGetResult.messages.map(message => message?.content?.text || '').join('\n');
+    if (promptText.includes('/tmp/demo-project') && promptText.includes('res://scenes/Player.tscn')) {
+      ok('prompts/get returns templated prompt content');
+    } else {
+      fail('prompts/get template args', 'Prompt content did not include expected argument values');
+    }
+  } else {
+    fail('prompts/get', 'No valid prompt response for godot.scene_bootstrap');
+  }
+
+  stdout = '';
+  server.stdin.write(rpcMsg('prompts/get', { name: 'godot.unknown_prompt', arguments: {} }));
+  await delay(1000);
+  const unknownPromptResponses = parseResponses(stdout);
+  const unknownPromptError = unknownPromptResponses.find(response => response.error)?.error;
+  if (unknownPromptError?.message?.includes('Unknown prompt')) {
+    ok('prompts/get returns clear error for unknown prompt');
+  } else {
+    fail('unknown prompt handling', 'Expected explicit unknown prompt error');
+  }
+
+  // 5. List tools
   async function listAllTools() {
     const allTools = [];
     let cursor;
@@ -171,7 +261,7 @@ async function main() {
     fail('tools/list', error.message);
   }
 
-  // 5. Call get_editor_status (should show disconnected)
+  // 6. Call get_editor_status (should show disconnected)
   console.log('\n🔌 Testing get_editor_status (no Godot connected)...');
   stdout = '';
   server.stdin.write(rpcMsg('tools/call', {
@@ -198,7 +288,7 @@ async function main() {
     fail('get_editor_status', 'No response');
   }
 
-  // 6. Test a migrated tool (should fail gracefully when no Godot)
+  // 7. Test a migrated tool (should fail gracefully when no Godot)
   console.log('\n🎮 Testing migrated tool without Godot connected...');
   stdout = '';
   server.stdin.write(rpcMsg('tools/call', {
@@ -224,11 +314,11 @@ async function main() {
     fail('create_scene without Godot', 'No response');
   }
 
-  // 7. Test visualizer WebSocket path routing
+  // 8. Test visualizer WebSocket path routing
   console.log('\n🖥️ Testing visualizer WebSocket path...');
   try {
     const vizWs = await new Promise((resolve, reject) => {
-      const socket = new WebSocket(VIZ_WS_URL);
+      const socket = new WebSocket(vizWsUrl);
       socket.on('open', () => resolve(socket));
       socket.on('error', reject);
       setTimeout(() => reject(new Error('Visualizer WS connect timeout')), 3000);
@@ -240,11 +330,11 @@ async function main() {
     fail('Visualizer WebSocket path', e.message);
   }
 
-  // 8. Test WebSocket connection (mock Godot client)
+  // 9. Test WebSocket connection (mock Godot client)
   console.log('\n🌐 Testing WebSocket bridge...');
   try {
     const ws = await new Promise((resolve, reject) => {
-      const socket = new WebSocket(GODOT_WS_URL);
+      const socket = new WebSocket(godotWsUrl);
       socket.on('open', () => resolve(socket));
       socket.on('error', reject);
       setTimeout(() => reject(new Error('WS connect timeout')), 3000);
