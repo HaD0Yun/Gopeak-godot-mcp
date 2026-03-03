@@ -38,7 +38,8 @@ import { getPrompt, listPrompts } from './prompts.js';
 
 // Check if debug mode is enabled
 const DEBUG_MODE: boolean = process.env.DEBUG === 'true';
-const GODOT_DEBUG_MODE: boolean = true; // Always use GODOT DEBUG MODE
+// Godot debug flag defaults to false, but follows DEBUG=true for easier troubleshooting.
+const GODOT_DEBUG_MODE_DEFAULT: boolean = process.env.GODOT_DEBUG === 'true' || DEBUG_MODE;
 
 const execAsync = promisify(exec);
 
@@ -96,6 +97,7 @@ class GodotServer {
   private operationsScriptPath: string;
   private validatedPaths: Map<string, boolean> = new Map();
   private strictPathValidation: boolean = false;
+  private godotDebugMode: boolean = GODOT_DEBUG_MODE_DEFAULT;
   private lspClient: GodotLSPClient | null = null;
   private dapClient: GodotDAPClient | null = null;
   private lastProjectPath: string | null = null;
@@ -199,7 +201,7 @@ class GodotServer {
     }
     // Apply configuration if provided
     let debugMode = DEBUG_MODE;
-    let godotDebugMode = GODOT_DEBUG_MODE;
+    let godotDebugMode = GODOT_DEBUG_MODE_DEFAULT;
 
     if (config) {
       if (config.debugMode !== undefined) {
@@ -225,6 +227,8 @@ class GodotServer {
         }
       }
     }
+
+    this.godotDebugMode = godotDebugMode;
 
     // Set the path to the operations script
     this.operationsScriptPath = join(__dirname, 'scripts', 'godot_operations.gd');
@@ -841,7 +845,7 @@ class GodotServer {
 
 
       // Add debug arguments if debug mode is enabled
-      const debugArgs = GODOT_DEBUG_MODE ? ['--debug-godot'] : [];
+      const debugArgs = this.godotDebugMode ? ['--debug-godot'] : [];
 
       // Construct the command with the operation and JSON parameters
       const cmd = [
