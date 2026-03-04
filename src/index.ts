@@ -897,17 +897,18 @@ class GodotServer {
       description: tool.description,
     }));
 
-    // Auto-activate matching tool groups when query matches their tools
+    // Auto-activate matching tool groups when query matches their keywords
+    // or when the query directly matches a group's tool NAME (not description).
+    // This prevents over-activation from incidental description matches.
     const newlyActivated: string[] = [];
     if (query && this.toolExposureProfile === 'compact') {
-      const matchedToolNames = new Set(filtered.map((t) => t.name));
       for (const [groupName, group] of Object.entries(TOOL_GROUPS)) {
         if (this.activeGroups.has(groupName)) continue;
-        // Activate group if any of its tools matched the query
-        const hasMatchingTool = group.tools.some((t) => matchedToolNames.has(t));
-        // Or if query matches any group keyword
+        // Activate if query matches a group keyword
         const hasMatchingKeyword = group.keywords.some((kw) => query.includes(kw) || kw.includes(query));
-        if (hasMatchingTool || hasMatchingKeyword) {
+        // Or if query matches a tool NAME in the group (strict name-only match)
+        const hasMatchingToolName = group.tools.some((t) => t.toLowerCase().includes(query));
+        if (hasMatchingKeyword || hasMatchingToolName) {
           this.activeGroups.add(groupName);
           newlyActivated.push(groupName);
         }
