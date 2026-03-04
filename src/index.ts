@@ -87,6 +87,122 @@ interface MCPToolDefinition {
 }
 
 /**
+ * Dynamic tool groups for context-based activation.
+ * Tools in these groups are hidden by default and activated on demand.
+ */
+const TOOL_GROUPS: Record<string, { description: string; tools: string[]; keywords: string[] }> = {
+  scene_advanced: {
+    description: 'Advanced scene tree manipulation (duplicate, reparent, sprite)',
+    tools: ['duplicate_node', 'reparent_node', 'load_sprite'],
+    keywords: ['duplicate', 'reparent', 'move node', 'sprite', 'texture', 'copy node'],
+  },
+  uid: {
+    description: 'UID management for resources',
+    tools: ['get_uid', 'update_project_uids'],
+    keywords: ['uid', 'resource id', 'unique id'],
+  },
+  import_export: {
+    description: 'Import pipeline and project validation',
+    tools: ['get_import_status', 'get_import_options', 'set_import_options', 'reimport_resource', 'validate_project'],
+    keywords: ['import', 'reimport', 'import settings', 'import options', 'validate project'],
+  },
+  autoload: {
+    description: 'Autoload singletons and main scene management',
+    tools: ['add_autoload', 'remove_autoload', 'list_autoloads', 'set_main_scene'],
+    keywords: ['autoload', 'singleton', 'main scene'],
+  },
+  signal: {
+    description: 'Signal disconnection and connection listing',
+    tools: ['disconnect_signal', 'list_connections'],
+    keywords: ['disconnect signal', 'list signals', 'signal connections', 'list connections'],
+  },
+  runtime: {
+    description: 'Runtime inspection and live game control',
+    tools: ['inspect_runtime_tree', 'set_runtime_property', 'call_runtime_method', 'get_runtime_metrics'],
+    keywords: ['runtime inspect', 'live inspect', 'running game', 'performance', 'metrics', 'runtime tree', 'runtime property', 'runtime method'],
+  },
+  resource: {
+    description: 'Resource creation and modification (materials, shaders)',
+    tools: ['create_resource', 'create_material', 'create_shader', 'modify_resource'],
+    keywords: ['material', 'shader', 'resource create', 'modify resource', 'create material', 'create shader'],
+  },
+  animation: {
+    description: 'Animation system (animations, tracks, animation tree, state machine)',
+    tools: ['create_animation', 'add_animation_track', 'create_animation_tree', 'add_animation_state', 'connect_animation_states'],
+    keywords: ['animation', 'animate', 'keyframe', 'animation tree', 'state machine', 'animation track', 'animation state'],
+  },
+  plugin: {
+    description: 'Plugin/addon management',
+    tools: ['list_plugins', 'enable_plugin', 'disable_plugin'],
+    keywords: ['plugin', 'addon', 'enable plugin', 'disable plugin', 'list plugins'],
+  },
+  input: {
+    description: 'Input action mapping',
+    tools: ['add_input_action'],
+    keywords: ['input action', 'input map', 'key binding', 'controller', 'input mapping'],
+  },
+  tilemap: {
+    description: 'TileMap and TileSet system',
+    tools: ['create_tileset', 'set_tilemap_cells'],
+    keywords: ['tilemap', 'tileset', 'tile', '2d map', 'tilemap cells'],
+  },
+  audio: {
+    description: 'Audio bus system',
+    tools: ['create_audio_bus', 'get_audio_buses', 'set_audio_bus_effect', 'set_audio_bus_volume'],
+    keywords: ['audio', 'sound', 'music', 'audio bus', 'volume', 'sound effect'],
+  },
+  navigation: {
+    description: 'Navigation and pathfinding system',
+    tools: ['create_navigation_region', 'create_navigation_agent'],
+    keywords: ['navigation', 'pathfinding', 'navmesh', 'nav agent', 'navigation region'],
+  },
+  theme_ui: {
+    description: 'Theme and UI styling',
+    tools: ['set_theme_color', 'set_theme_font_size', 'apply_theme_shader'],
+    keywords: ['theme', 'ui style', 'font size', 'color override', 'theme color', 'theme shader'],
+  },
+  asset_store: {
+    description: 'Asset library search and download',
+    tools: ['search_assets', 'fetch_asset', 'list_asset_providers'],
+    keywords: ['asset store', 'asset library', 'download asset', 'search assets', 'fetch asset'],
+  },
+  testing: {
+    description: 'Screenshot capture and input injection for testing',
+    tools: ['capture_screenshot', 'capture_viewport', 'inject_action', 'inject_key', 'inject_mouse_click', 'inject_mouse_motion'],
+    keywords: ['screenshot', 'capture', 'inject input', 'simulate', 'test input', 'inject key', 'inject mouse', 'viewport capture'],
+  },
+  dx_tools: {
+    description: 'Developer experience tools (error log, health, usages, scaffold)',
+    tools: ['parse_error_log', 'get_project_health', 'find_resource_usages', 'scaffold_gameplay_prototype'],
+    keywords: ['error log', 'project health', 'find usages', 'scaffold', 'prototype', 'resource usages'],
+  },
+  intent_tracking: {
+    description: 'Intent capture, decision logging, and handoff',
+    tools: ['capture_intent_snapshot', 'record_decision_log', 'generate_handoff_brief', 'summarize_intent_context', 'record_work_step', 'record_execution_trace', 'export_handoff_pack', 'set_recording_mode', 'get_recording_mode'],
+    keywords: ['intent', 'handoff', 'decision log', 'work step', 'recording', 'execution trace', 'handoff brief'],
+  },
+  class_advanced: {
+    description: 'Advanced class introspection',
+    tools: ['inspect_inheritance'],
+    keywords: ['inheritance', 'class hierarchy', 'extends', 'inspect inheritance'],
+  },
+  lsp: {
+    description: 'GDScript Language Server tools (completions, hover, symbols)',
+    tools: ['lsp_get_completions', 'lsp_get_hover', 'lsp_get_symbols'],
+    keywords: ['completion', 'hover info', 'lsp completions', 'code completion', 'gdscript symbols'],
+  },
+  dap: {
+    description: 'Debug Adapter Protocol tools (breakpoints, stepping, stack trace)',
+    tools: ['dap_set_breakpoint', 'dap_remove_breakpoint', 'dap_continue', 'dap_pause', 'dap_step_over', 'dap_get_stack_trace'],
+    keywords: ['breakpoint', 'debugger', 'step over', 'stack trace', 'pause execution', 'debug adapter'],
+  },
+  version_gate: {
+    description: 'Version validation and patch verification',
+    tools: ['validate_patch_with_lsp', 'enforce_version_gate'],
+    keywords: ['version gate', 'validate patch', 'version constraint', 'version check'],
+  },
+};
+/**
  * Main server class for the Godot MCP server
  */
 class GodotServer {
@@ -110,6 +226,7 @@ class GodotServer {
   private toolDefinitionFactory: (() => MCPToolDefinition[]) | null = null;
   private readonly toolExposureProfile: 'compact' | 'full' | 'legacy';
   private readonly toolsListPageSize: number;
+  private activeGroups: Set<string> = new Set();
   private readonly compactAliasToLegacy: Record<string, string> = {
     'tool.catalog': 'tool_catalog',
     'project.list': 'list_projects',
@@ -143,6 +260,7 @@ class GodotServer {
     'visualizer.map': 'map_project',
     'lsp.diagnostics': 'lsp_get_diagnostics',
     'dap.output': 'dap_get_output',
+    'tool.groups': 'manage_tool_groups',
   };
 
   /**
@@ -202,10 +320,10 @@ class GodotServer {
       this.toolExposureProfile = 'compact';
     }
 
-    const rawToolsPageSize = parseInt(process.env.GOPEAK_TOOLS_PAGE_SIZE || '32', 10);
+    const rawToolsPageSize = parseInt(process.env.GOPEAK_TOOLS_PAGE_SIZE || '33', 10);
     this.toolsListPageSize = Number.isFinite(rawToolsPageSize) && rawToolsPageSize > 0
       ? rawToolsPageSize
-      : 32;
+      : 33;
 
     // Initialize reverse parameter mappings
     for (const [snakeCase, camelCase] of Object.entries(this.parameterMappings)) {
@@ -257,7 +375,7 @@ class GodotServer {
       },
       {
         capabilities: {
-          tools: {},
+          tools: { listChanged: true },
           prompts: {},
           resources: {},
         },
@@ -672,7 +790,31 @@ class GodotServer {
       return allTools;
     }
 
-    return this.buildCompactTools(allTools);
+    // Start with compact profile tools
+    const exposed = this.buildCompactTools(allTools);
+
+    // Add dynamically activated group tools (using their legacy names)
+    if (this.activeGroups.size > 0) {
+      const activatedToolNames = new Set<string>();
+      for (const groupName of this.activeGroups) {
+        const group = TOOL_GROUPS[groupName];
+        if (!group) continue;
+        for (const toolName of group.tools) {
+          activatedToolNames.add(toolName);
+        }
+      }
+
+      for (const tool of allTools) {
+        if (activatedToolNames.has(tool.name)) {
+          exposed.push({
+            ...tool,
+            description: `[dynamic] ${tool.description}`,
+          });
+        }
+      }
+    }
+
+    return exposed;
   }
 
   private parseToolsListCursor(cursor: unknown, total: number): number {
@@ -755,6 +897,29 @@ class GodotServer {
       description: tool.description,
     }));
 
+    // Auto-activate matching tool groups when query matches their tools
+    const newlyActivated: string[] = [];
+    if (query && this.toolExposureProfile === 'compact') {
+      const matchedToolNames = new Set(filtered.map((t) => t.name));
+      for (const [groupName, group] of Object.entries(TOOL_GROUPS)) {
+        if (this.activeGroups.has(groupName)) continue;
+        // Activate group if any of its tools matched the query
+        const hasMatchingTool = group.tools.some((t) => matchedToolNames.has(t));
+        // Or if query matches any group keyword
+        const hasMatchingKeyword = group.keywords.some((kw) => query.includes(kw) || kw.includes(query));
+        if (hasMatchingTool || hasMatchingKeyword) {
+          this.activeGroups.add(groupName);
+          newlyActivated.push(groupName);
+        }
+      }
+
+      // Notify clients that tool list changed so they re-fetch
+      if (newlyActivated.length > 0) {
+        this.cachedToolDefinitions = []; // Clear cache to force rebuild
+        this.server.sendToolListChanged().catch(() => { /* ignore if not connected */ });
+      }
+    }
+
     return {
       content: [{
         type: 'text',
@@ -763,10 +928,133 @@ class GodotServer {
           totalTools: tools.length,
           query: query || null,
           returned: items.length,
+          activeGroups: Array.from(this.activeGroups),
+          newlyActivated: newlyActivated.length > 0 ? newlyActivated : undefined,
           tools: items,
         }, null, 2),
       }],
     };
+  }
+
+  private async handleManageToolGroups(args: any): Promise<{ content: Array<{ type: string; text: string }> }> {
+    const normalizedArgs = this.normalizeParameters(args || {});
+    const action = typeof normalizedArgs.action === 'string' ? normalizedArgs.action.toLowerCase() : 'status';
+    const groupName = typeof normalizedArgs.group === 'string' ? normalizedArgs.group : '';
+
+    switch (action) {
+      case 'list': {
+        const groups = Object.entries(TOOL_GROUPS).map(([name, group]) => ({
+          name,
+          description: group.description,
+          tools: group.tools,
+          toolCount: group.tools.length,
+          active: this.activeGroups.has(name),
+        }));
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({ totalGroups: groups.length, groups }, null, 2),
+          }],
+        };
+      }
+
+      case 'activate': {
+        if (!groupName || !TOOL_GROUPS[groupName]) {
+          const available = Object.keys(TOOL_GROUPS).join(', ');
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({ error: `Unknown group '${groupName}'. Available: ${available}` }),
+            }],
+          };
+        }
+        const wasNew = !this.activeGroups.has(groupName);
+        this.activeGroups.add(groupName);
+        if (wasNew) {
+          this.cachedToolDefinitions = [];
+          this.server.sendToolListChanged().catch(() => {});
+        }
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              activated: groupName,
+              tools: TOOL_GROUPS[groupName].tools,
+              wasAlreadyActive: !wasNew,
+              activeGroups: Array.from(this.activeGroups),
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'deactivate': {
+        if (!groupName || !TOOL_GROUPS[groupName]) {
+          const available = Object.keys(TOOL_GROUPS).join(', ');
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({ error: `Unknown group '${groupName}'. Available: ${available}` }),
+            }],
+          };
+        }
+        const wasActive = this.activeGroups.has(groupName);
+        this.activeGroups.delete(groupName);
+        if (wasActive) {
+          this.cachedToolDefinitions = [];
+          this.server.sendToolListChanged().catch(() => {});
+        }
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              deactivated: groupName,
+              wasActive,
+              activeGroups: Array.from(this.activeGroups),
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'reset': {
+        const previouslyActive = Array.from(this.activeGroups);
+        this.activeGroups.clear();
+        if (previouslyActive.length > 0) {
+          this.cachedToolDefinitions = [];
+          this.server.sendToolListChanged().catch(() => {});
+        }
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              reset: true,
+              deactivated: previouslyActive,
+              activeGroups: [],
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'status':
+      default: {
+        const activeGroupDetails = Array.from(this.activeGroups).map((name) => ({
+          name,
+          description: TOOL_GROUPS[name]?.description,
+          tools: TOOL_GROUPS[name]?.tools,
+        }));
+        const totalDynamicTools = activeGroupDetails.reduce((sum, g) => sum + (g.tools?.length || 0), 0);
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              activeGroupCount: this.activeGroups.size,
+              totalDynamicTools,
+              activeGroups: activeGroupDetails,
+              availableGroups: Object.keys(TOOL_GROUPS),
+            }, null, 2),
+          }],
+        };
+      }
+    }
   }
 
   /**
@@ -1342,7 +1630,7 @@ class GodotServer {
         },
         {
           name: 'tool_catalog',
-          description: 'Discover available tools including hidden legacy tools. Use query to search by capability keywords (e.g., animation, import, tilemap, audio).',
+          description: 'Discover available tools including hidden legacy tools. Use query to search by capability keywords (e.g., animation, import, tilemap, audio). Matching tool groups are auto-activated and become available immediately.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -1350,6 +1638,18 @@ class GodotServer {
               limit: { type: 'number', description: 'Maximum results to return. Default: 30, max: 100.' },
             },
             required: [],
+          },
+        },
+        {
+          name: 'manage_tool_groups',
+          description: 'Manage dynamic tool groups. When you need tools not in the default set, use this to activate groups of related tools. Actions: list (show all groups), activate (enable a group), deactivate (disable a group), reset (disable all groups), status (show active groups). Groups auto-activate when tool_catalog matches their tools.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              action: { type: 'string', description: 'Action to perform: list, activate, deactivate, reset, status', enum: ['list', 'activate', 'deactivate', 'reset', 'status'] },
+              group: { type: 'string', description: 'Group name (required for activate/deactivate). Use list action to see available groups.' },
+            },
+            required: ['action'],
           },
         },
         {
@@ -3360,6 +3660,8 @@ class GodotServer {
           return await this.handleGetRecordingMode();
         case 'tool_catalog':
           return await this.handleToolCatalog(request.params.arguments);
+        case 'manage_tool_groups':
+          return await this.handleManageToolGroups(request.params.arguments);
         case 'create_scene':
           return await this.handleViaBridge('create_scene', normalizedArgs);
         case 'add_node':
