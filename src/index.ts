@@ -105,6 +105,7 @@ class GodotServer {
   private godotBridge: GodotBridge;
   private shutdownInitiated = false;
   private cachedToolDefinitions: MCPToolDefinition[] = [];
+  private toolDefinitionFactory: (() => MCPToolDefinition[]) | null = null;
   private readonly toolExposureProfile: 'compact' | 'full' | 'legacy';
   private readonly toolsListPageSize: number;
   private readonly compactAliasToLegacy: Record<string, string> = {
@@ -687,13 +688,41 @@ class GodotServer {
     return { tools: page };
   }
 
+  private getAllToolDefinitions(): MCPToolDefinition[] {
+    if (this.cachedToolDefinitions.length > 0) {
+      return this.cachedToolDefinitions;
+    }
+
+    if (this.toolDefinitionFactory) {
+      this.cachedToolDefinitions = this.toolDefinitionFactory();
+    }
+
+    return this.cachedToolDefinitions;
+  }
+
+  private getMissingRequiredArguments(toolName: string, args: Record<string, unknown>): string[] {
+    const toolDefinition = this.getAllToolDefinitions().find((tool) => tool.name === toolName);
+    const required = (toolDefinition?.inputSchema as { required?: unknown } | undefined)?.required;
+
+    if (!Array.isArray(required) || required.length === 0) {
+      return [];
+    }
+
+    return required
+      .filter((field): field is string => typeof field === 'string')
+      .filter((field) => {
+        const value = args[field];
+        return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+      });
+  }
+
   private async handleToolCatalog(args: any): Promise<{ content: Array<{ type: string; text: string }> }> {
     const normalizedArgs = this.normalizeParameters(args || {});
     const query = typeof normalizedArgs.query === 'string' ? normalizedArgs.query.trim().toLowerCase() : '';
     const rawLimit = typeof normalizedArgs.limit === 'number' ? normalizedArgs.limit : 30;
     const limit = Math.max(1, Math.min(100, rawLimit));
 
-    const tools = this.cachedToolDefinitions;
+    const tools = this.getAllToolDefinitions();
     const reverseAlias = new Map<string, string>();
     for (const [compactName, legacyName] of Object.entries(this.compactAliasToLegacy)) {
       reverseAlias.set(legacyName, compactName);
@@ -3255,6 +3284,7 @@ class GodotServer {
         ...createDAPTools(),
       ];
 
+    this.toolDefinitionFactory = buildToolDefinitions;
     this.cachedToolDefinitions = buildToolDefinitions();
 
     this.server.setRequestHandler(ListToolsRequestSchema, async (request) => {
@@ -3733,6 +3763,16 @@ class GodotServer {
     }
     try {
       const normalizedArgs = this.normalizeParameters((args || {}) as OperationParams);
+      const missingRequiredArgs = this.getMissingRequiredArguments(
+        toolName,
+        normalizedArgs as Record<string, unknown>
+      );
+      if (missingRequiredArgs.length > 0) {
+        return this.createErrorResponse(
+          `Missing required arguments for ${toolName}: ${missingRequiredArgs.join(', ')}`,
+          [`Provide required argument(s): ${missingRequiredArgs.join(', ')}`]
+        );
+      }
       const result = await this.godotBridge.invokeTool(toolName, normalizedArgs as Record<string, unknown>);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (error) {
