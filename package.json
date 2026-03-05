@@ -1,13 +1,13 @@
 {
   "name": "gopeak",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "mcpName": "io.github.HaD0Yun/gopeak",
   "description": "GoPeak — The most comprehensive MCP server for Godot Engine. 95+ tools: scene management, GDScript LSP diagnostics, DAP debugger, screenshot capture, input injection, ClassDB introspection, CC0 asset library. AI-assisted game development with Claude, Cursor, Cline, OpenCode.",
   "type": "module",
   "main": "./build/index.js",
   "bin": {
-    "gopeak": "./build/index.js",
-    "godot-mcp": "./build/index.js"
+    "gopeak": "./build/cli.js",
+    "godot-mcp": "./build/cli.js"
   },
   "files": [
     "build",
