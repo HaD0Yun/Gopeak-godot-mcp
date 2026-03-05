@@ -22,7 +22,7 @@
     "test:ci": "npm run test:smoke",
     "ci": "npm run build && npm run typecheck && npm run test:ci",
     "prepare": "npm run build",
-    "postinstall": "node build/cli.js setup --silent 2>/dev/null || true",
+    "postinstall": "node -e \"try{require('child_process').execFileSync(process.execPath,['build/cli.js','setup','--silent'],{stdio:'ignore'})}catch{}\"",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
     "pack": "npm pack --dry-run",
