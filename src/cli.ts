@@ -31,7 +31,7 @@ async function main(): Promise<void> {
   switch (command) {
     case 'setup': {
       const { setupShellHooks } = await import('./cli/setup.js');
-      await setupShellHooks();
+      await setupShellHooks(args.slice(1));
       break;
     }
     case 'check': {

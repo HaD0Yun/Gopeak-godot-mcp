@@ -67,13 +67,16 @@ function generateHookBlock(): string {
   return lines.join('\n');
 }
 
-export async function setupShellHooks(): Promise<void> {
+export async function setupShellHooks(args: string[] = []): Promise<void> {
+  const silent = args.includes('--silent');
   const rcFile = getShellRcFile();
   const shellName = getShellName();
 
+  const log = silent ? (..._args: any[]) => {} : console.log.bind(console);
+
   // Check if RC file exists
   if (!existsSync(rcFile)) {
-    console.log(`⚠️  ${rcFile} not found. Creating it.`);
+    log(`⚠️  ${rcFile} not found. Creating it.`);
     writeFileSync(rcFile, '');
   }
 
@@ -81,33 +84,31 @@ export async function setupShellHooks(): Promise<void> {
 
   // Check if already installed
   if (content.includes(MARKER_START)) {
-    // Replace existing block
     const cleaned = removeHookBlock(content);
     const hookBlock = generateHookBlock();
     writeFileSync(rcFile, cleaned + '\n' + hookBlock + '\n');
-    console.log(`🔄 GoPeak shell hooks updated in ${rcFile}`);
+    log(`🔄 GoPeak shell hooks updated in ${rcFile}`);
   } else {
-    // Append new block
     const hookBlock = generateHookBlock();
     appendFileSync(rcFile, '\n' + hookBlock + '\n');
-    console.log(`✅ GoPeak shell hooks installed in ${rcFile}`);
+    log(`✅ GoPeak shell hooks installed in ${rcFile}`);
   }
 
-  console.log(`   Reload with: source ${rcFile}`);
-  console.log('');
+  log(`   Reload with: source ${rcFile}`);
+  log('');
 
   // Show onboarding (once)
   ensureGopeakDir();
   if (!existsSync(ONBOARDING_SHOWN_FILE)) {
-    printOnboarding();
+    printOnboarding(log);
     writeFileSync(ONBOARDING_SHOWN_FILE, new Date().toISOString());
   }
 
   // Suggest star (once)
   if (!existsSync(STAR_PROMPTED_FILE)) {
-    console.log('⭐ If GoPeak helps your Godot workflow, please star us!');
-    console.log('   Run: gopeak star');
-    console.log('');
+    log('⭐ If GoPeak helps your Godot workflow, please star us!');
+    log('   Run: gopeak star');
+    log('');
   }
 }
 
@@ -123,19 +124,19 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function printOnboarding(): void {
+function printOnboarding(log: (...args: any[]) => void = console.log): void {
   const version = getLocalVersion();
-  console.log('╔══════════════════════════════════════════════════════╗');
-  console.log(`║  🎮 GoPeak v${version} — AI-Powered Godot Development`
+  log('╔══════════════════════════════════════════════════════╗');
+  log(`║  🎮 GoPeak v${version} — AI-Powered Godot Development`
     + ' '.repeat(Math.max(0, 39 - version.length)) + '║');
-  console.log('║                                                      ║');
-  console.log('║  110+ tools for Godot Engine via MCP                 ║');
-  console.log('║                                                      ║');
-  console.log('║  📖 Docs:   https://github.com/HaD0Yun/godot-mcp   ║');
-  console.log('║  ⭐ Star:   gopeak star                              ║');
-  console.log('║  🔄 Update: npm update -g gopeak                     ║');
-  console.log('╚══════════════════════════════════════════════════════╝');
-  console.log('');
+  log('║                                                      ║');
+  log('║  110+ tools for Godot Engine via MCP                 ║');
+  log('║                                                      ║');
+  log('║  📖 Docs:   https://github.com/HaD0Yun/godot-mcp   ║');
+  log('║  ⭐ Star:   gopeak star                              ║');
+  log('║  🔄 Update: npm update -g gopeak                     ║');
+  log('╚══════════════════════════════════════════════════════╝');
+  log('');
 }
 
 export { MARKER_START, MARKER_END };

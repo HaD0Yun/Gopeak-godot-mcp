@@ -183,6 +183,14 @@ GoPeak also exposes two CLI bin names:
 
 ---
 
+## Documentation
+
+- [Documentation Map](docs/README.md)
+- [Architecture](docs/architecture.md)
+- [Platform Roadmap](docs/platform-roadmap.md)
+- [Unity-MCP Benchmark Plan](docs/unity-mcp-benchmark-plan.md)
+- [Release Process](docs/release-process.md)
+
 ## CI
 
 GitHub Actions runs on push/PR and executes:
