@@ -18,6 +18,7 @@
     "build": "tsc && node scripts/build-visualizer.js && node scripts/build.js",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:ci",
+    "smoke": "npm run test:ci",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:integration": "node test-bridge.mjs",
     "test:dynamic-groups": "node test-dynamic-groups.mjs",

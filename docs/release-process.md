@@ -25,7 +25,7 @@ Run release checks before tagging:
 ```bash
 npm run build
 npx tsc --noEmit
-npm run test:ci
+npm run smoke
 ```
 
 ## 3) Commit + tag

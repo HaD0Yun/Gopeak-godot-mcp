@@ -189,7 +189,7 @@ GitHub Actions runs on push/PR and executes:
 
 1. `npm run build`
 2. `npx tsc --noEmit`
-3. `npm run test:ci`
+3. `npm run smoke`
 
 Run the same checks locally:
 
