@@ -1,6 +1,6 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
 import { createConnection, type Socket } from 'node:net';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 type PendingRequest = {
@@ -555,6 +555,46 @@ function normalizeLSPError(error: unknown): string {
   return String(error);
 }
 
+function normalizePathForComparison(pathValue: string): string {
+  const resolved = resolve(pathValue);
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+}
+
+function isPathWithinRoot(rootPath: string, candidatePath: string): boolean {
+  const normalizedRoot = normalizePathForComparison(rootPath);
+  const normalizedCandidate = normalizePathForComparison(candidatePath);
+  const rootPrefix = normalizedRoot.endsWith(sep) ? normalizedRoot : `${normalizedRoot}${sep}`;
+
+  return normalizedCandidate === normalizedRoot || normalizedCandidate.startsWith(rootPrefix);
+}
+
+async function resolveLSPPaths(
+  projectPathValue: string,
+  scriptPathValue: string
+): Promise<{ projectPath: string; scriptPath: string }> {
+  const requestedProjectPath = resolve(projectPathValue);
+  let projectPath: string;
+  try {
+    projectPath = await realpath(requestedProjectPath);
+  } catch {
+    throw new Error(`Project path does not exist: ${requestedProjectPath}`);
+  }
+
+  const requestedScriptPath = resolve(projectPath, scriptPathValue);
+  let scriptPath: string;
+  try {
+    scriptPath = await realpath(requestedScriptPath);
+  } catch {
+    throw new Error(`Script file does not exist: ${requestedScriptPath}`);
+  }
+
+  if (!isPathWithinRoot(projectPath, scriptPath)) {
+    throw new Error('scriptPath resolves outside the project root boundary.');
+  }
+
+  return { projectPath, scriptPath };
+}
+
 export async function handleLSPTool(
   client: GodotLSPClient,
   toolName: string,
@@ -577,8 +617,7 @@ export async function handleLSPTool(
       throw new Error('Missing required argument: scriptPath');
     }
 
-    const projectPath = resolve(projectPathValue);
-    const scriptPath = resolve(projectPath, scriptPathValue);
+    const { projectPath, scriptPath } = await resolveLSPPaths(projectPathValue, scriptPathValue);
     const content = await readFile(scriptPath, 'utf8');
 
     await client.initialize(projectPath);

@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsc && node scripts/build-visualizer.js && node scripts/build.js",
     "typecheck": "tsc --noEmit",
+    "test": "npm run test:ci",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:integration": "node test-bridge.mjs",
     "test:ci": "npm run test:smoke",
@@ -31,8 +32,8 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.0",
-    "axios": "^1.7.9",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "axios": "^1.13.6",
     "fs-extra": "^11.2.0",
     "ws": "^8.18.0"
   },
@@ -41,6 +42,10 @@
     "@types/ws": "^8.5.12",
     "esbuild": "^0.24.2",
     "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "@hono/node-server": "^1.19.11",
+    "hono": "^4.12.5"
   },
   "license": "MIT",
   "repository": {
