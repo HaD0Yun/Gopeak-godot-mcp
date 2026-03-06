@@ -16,6 +16,7 @@ const BRIDGE_PORT = Number.isInteger(parsedBridgePort) && parsedBridgePort >= 1 
   : null;
 const BRIDGE_HOST = process.env.GOPEAK_BRIDGE_HOST || process.env.GODOT_BRIDGE_HOST || '127.0.0.1';
 const GODOT_PATH = process.env.GODOT_PATH || '/home/doyun/Apps/godot-4.6-rc2/Godot_v4.6-rc2_linux.x86_64';
+const TEST_PROJECT = process.env.GOPEAK_TEST_PROJECT || '/home/doyun/gopeak-smoke-test';
 
 let passed = 0;
 let failed = 0;
@@ -316,6 +317,69 @@ async function main() {
     fail('tools/list', error.message);
   }
 
+  // 5.5 Regression: class introspection tools should return structured MCP content
+  console.log('\n🏛️ Testing ClassDB introspection tools...');
+  stdout = '';
+  server.stdin.write(rpcMsg('tools/call', {
+    name: 'query_classes',
+    arguments: {
+      projectPath: TEST_PROJECT,
+      category: 'node2d',
+      filter: 'sprite',
+      instantiableOnly: true,
+    }
+  }));
+  await delay(1500);
+
+  const queryClassesResponses = parseResponses(stdout);
+  const queryClassesPayload = parseTextContent(queryClassesResponses.find(response => response.result?.content));
+  if (queryClassesPayload && Array.isArray(queryClassesPayload.classes)) {
+    ok(`query_classes returned structured JSON (${queryClassesPayload.classes.length} classes)`);
+  } else {
+    fail('query_classes structured response', JSON.stringify(queryClassesResponses[0] || null));
+  }
+
+  stdout = '';
+  server.stdin.write(rpcMsg('tools/call', {
+    name: 'query_class_info',
+    arguments: {
+      projectPath: TEST_PROJECT,
+      className: 'Node2D',
+    }
+  }));
+  await delay(1500);
+
+  const queryClassInfoResponses = parseResponses(stdout);
+  const queryClassInfoPayload = parseTextContent(queryClassInfoResponses.find(response => response.result?.content));
+  if (queryClassInfoPayload && queryClassInfoPayload.class_name === 'Node2D' && Array.isArray(queryClassInfoPayload.methods)) {
+    ok(`query_class_info returned structured JSON (${queryClassInfoPayload.methods.length} methods)`);
+  } else {
+    fail('query_class_info structured response', JSON.stringify(queryClassInfoResponses[0] || null));
+  }
+
+  stdout = '';
+  server.stdin.write(rpcMsg('tools/call', {
+    name: 'search_project',
+    arguments: {
+      projectPath: TEST_PROJECT,
+      query: 'extends CharacterBody2D',
+      fileTypes: ['gd'],
+      maxResults: 10,
+    }
+  }));
+  await delay(1500);
+
+  const searchProjectResponses = parseResponses(stdout);
+  const searchProjectText = searchProjectResponses
+    .flatMap((response) => response?.result?.content || [])
+    .map((chunk) => chunk?.text || '')
+    .join('\n');
+  if (searchProjectText.includes('player.gd') || searchProjectText.includes('CharacterBody2D')) {
+    ok('search_project runs without script parse errors');
+  } else {
+    fail('search_project regression', searchProjectText.substring(0, 400) || JSON.stringify(searchProjectResponses[0] || null));
+  }
+
   // 6. Call get_editor_status (should show disconnected)
   console.log('\n🔌 Testing get_editor_status (no Godot connected)...');
   stdout = '';
@@ -399,7 +463,7 @@ async function main() {
     // Send godot_ready
     ws.send(JSON.stringify({
       type: 'godot_ready',
-      project_path: '/home/doyun/gopeak-smoke-test'
+      project_path: TEST_PROJECT
     }));
     await delay(500);
     ok('Sent godot_ready message');
@@ -448,7 +512,7 @@ async function main() {
     server.stdin.write(rpcMsg('tools/call', {
       name: sceneCreateToolName,
       arguments: {
-        project_path: '/home/doyun/gopeak-smoke-test',
+        project_path: TEST_PROJECT,
         scene_path: 'res://test_bridge.tscn',
         root_type: 'Node2D',
       }
@@ -465,7 +529,7 @@ async function main() {
       }
 
       if (
-        invokeMsg.args?.projectPath === '/home/doyun/gopeak-smoke-test'
+        invokeMsg.args?.projectPath === TEST_PROJECT
         && invokeMsg.args?.scenePath === 'res://test_bridge.tscn'
         && invokeMsg.args?.rootNodeType === 'Node2D'
       ) {

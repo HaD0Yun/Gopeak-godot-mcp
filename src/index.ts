@@ -4932,6 +4932,29 @@ class GodotServer {
       .filter((v) => v !== null);
   }
 
+  private extractLastJsonLine(stdout: string): string | null {
+    const lines = stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const line = lines[i];
+      if (!(line.startsWith('{') || line.startsWith('['))) {
+        continue;
+      }
+
+      try {
+        JSON.parse(line);
+        return line;
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
   /**
    * Capture/update current intent snapshot
    */
@@ -5995,7 +6018,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -6058,7 +6081,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -6375,7 +6398,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -6436,7 +6459,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -6616,7 +6639,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -6735,7 +6758,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -6794,7 +6817,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -6848,7 +6871,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -6902,7 +6925,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -6955,7 +6978,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -7012,7 +7035,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -7223,7 +7246,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -7487,7 +7510,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -8405,7 +8428,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -8638,7 +8661,7 @@ class GodotServer {
       }
 
       return {
-        content: [{ type: 'text', text: stdout.trim() }],
+        content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
       };
     } catch (error: any) {
       return this.createErrorResponse(
@@ -9525,7 +9548,18 @@ uniform float dissolve_amount : hint_range(0.0, 1.0) = 0.0;
     if (args?.category) params.category = args.category;
     if (args?.instantiableOnly !== undefined) params.instantiable_only = args.instantiableOnly;
     if (args?.instantiable_only !== undefined) params.instantiable_only = args.instantiable_only;
-    return await this.executeOperation('query_classes', params, projectPath);
+
+    const { stdout, stderr } = await this.executeOperation('query_classes', params, projectPath);
+    if (stderr && stderr.trim()) {
+      return this.createErrorResponse(`Failed to query classes: ${stderr.trim()}`, [
+        'Check the project path and ensure project.godot exists',
+        'Verify the category/filter arguments are valid',
+      ]);
+    }
+
+    return {
+      content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
+    };
   }
 
   /**
@@ -9545,7 +9579,18 @@ uniform float dissolve_amount : hint_range(0.0, 1.0) = 0.0;
     };
     if (args?.includeInherited !== undefined) params.include_inherited = args.includeInherited;
     if (args?.include_inherited !== undefined) params.include_inherited = args.include_inherited;
-    return await this.executeOperation('query_class_info', params, projectPath);
+
+    const { stdout, stderr } = await this.executeOperation('query_class_info', params, projectPath);
+    if (stderr && stderr.trim()) {
+      return this.createErrorResponse(`Failed to query class info: ${stderr.trim()}`, [
+        'Check that the class name exists in the current Godot version',
+        'Verify the project path and ClassDB availability',
+      ]);
+    }
+
+    return {
+      content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
+    };
   }
 
   /**
@@ -9560,9 +9605,17 @@ uniform float dissolve_amount : hint_range(0.0, 1.0) = 0.0;
     if (!className) {
       throw new McpError(ErrorCode.InvalidParams, 'className is required');
     }
-    return await this.executeOperation('inspect_inheritance', {
+    const { stdout, stderr } = await this.executeOperation('inspect_inheritance', {
       class_name: className,
     }, projectPath);
+    if (stderr && stderr.trim()) {
+      return this.createErrorResponse(`Failed to inspect inheritance: ${stderr.trim()}`, [
+        'Check that the class name exists in the current Godot version',
+      ]);
+    }
+    return {
+      content: [{ type: 'text', text: this.extractLastJsonLine(stdout) || stdout.trim() }],
+    };
   }
 
   /**

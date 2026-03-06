@@ -2835,6 +2835,10 @@ func get_node_by_path_v2(scene_root: Node, node_path: String) -> Node:
     
     return scene_root.get_node_or_null(clean_path)
 
+# Backward-compatible alias for newer helpers that still call the old name
+func get_node_from_path(scene_root: Node, node_path: String) -> Node:
+    return get_node_by_path_v2(scene_root, node_path)
+
 # Helper function to build node tree structure recursively
 func build_node_tree(node: Node, current_depth: int, max_depth: int, include_properties: bool) -> Dictionary:
     var result = {
