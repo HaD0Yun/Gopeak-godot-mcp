@@ -6,12 +6,12 @@
     "url": "https://github.com/HaD0Yun/godot-mcp",
     "source": "github"
   },
-  "version": "2.2.0",
+  "version": "2.3.3",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "gopeak",
-      "version": "2.2.0",
+      "version": "2.3.3",
       "transport": {
         "type": "stdio"
       },
