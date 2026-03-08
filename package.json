@@ -29,7 +29,8 @@
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
     "pack": "npm pack --dry-run",
-    "version:bump": "node scripts/bump-version.mjs"
+    "version:bump": "node scripts/bump-version.mjs",
+    "test:setup": "npm run build && node test-setup-hooks.mjs"
   },
   "engines": {
     "node": ">=18"
