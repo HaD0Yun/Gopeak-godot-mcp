@@ -2,6 +2,17 @@
 
 All notable changes to GoPeak (godot-mcp) will be documented in this file.
 
+## [2.3.3] - 2026-03-09
+
+### Fixed
+- Runtime addon framing handling now tolerates welcome and pong responses more reliably
+- Runtime status checks now verify addon connectivity more accurately
+- ClassDB MCP responses and node-path helper synchronization issues were corrected
+- Postinstall setup hook behavior was hardened for cross-platform compatibility on Windows
+
+### Improved
+- CI/test coverage, observability, and documentation/structure updates from recent main branch work are now included in the npm release
+
 ## [2.0.0] - 2025-02-20
 
 ### Added

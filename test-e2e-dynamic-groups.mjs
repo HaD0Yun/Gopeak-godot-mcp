@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import process from 'node:process';
 /**
  * E2E Test: Dynamic Tool Group Activation
  * 
@@ -43,7 +44,7 @@ function makeNotification(method, params) {
 
 function startServer() {
   return new Promise((resolve, reject) => {
-    serverProcess = spawn('node', [SERVER_PATH], {
+    serverProcess = spawn(process.execPath, [SERVER_PATH], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: {
         ...process.env,

@@ -13,6 +13,7 @@ import {
   ensureGopeakDir,
   ONBOARDING_SHOWN_FILE,
   STAR_PROMPTED_FILE,
+  supportsShellHooks,
 } from './utils.js';
 
 const MARKER_START = '# >>> GoPeak shell hooks >>>';
@@ -69,6 +70,14 @@ function generateHookBlock(): string {
 
 export async function setupShellHooks(args: string[] = []): Promise<void> {
   const silent = args.includes('--silent');
+  if (!supportsShellHooks()) {
+    if (!silent) {
+      console.log('ℹ️  GoPeak shell hooks are only installed for bash/zsh on Unix-like systems.');
+      console.log('   Skipping shell hook setup on this platform/shell.');
+    }
+    return;
+  }
+
   const rcFile = getShellRcFile();
   const shellName = getShellName();
 

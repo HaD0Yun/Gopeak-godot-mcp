@@ -131,6 +131,11 @@ export function getShellName(): string {
   return 'bash';
 }
 
+export function supportsShellHooks(platform = process.platform, shell = process.env.SHELL ?? ''): boolean {
+  if (platform === 'win32') return false;
+  return shell.includes('bash') || shell.includes('zsh');
+}
+
 /* ------------------------------------------------------------------ */
 /*  Command helpers                                                    */
 /* ------------------------------------------------------------------ */

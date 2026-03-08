@@ -2,6 +2,7 @@
 
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
+import process from 'node:process';
 
 const SERVER_ENTRY = './build/index.js';
 const GODOT_PATH = process.env.GODOT_PATH || '/home/doyun/Apps/godot-4.6-rc2/Godot_v4.6-rc2_linux.x86_64';
@@ -155,8 +156,8 @@ async function listAllTools(client) {
 async function main() {
   console.log('Running dynamic tool group MCP test...');
 
-  const server = spawn('node', [SERVER_ENTRY], {
-    cwd: '/home/doyun/godot-mcp',
+  const server = spawn(process.execPath, [SERVER_ENTRY], {
+    cwd: process.cwd(),
     env: {
       ...process.env,
       GODOT_PATH,

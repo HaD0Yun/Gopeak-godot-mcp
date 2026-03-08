@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { WebSocket } from 'ws';
 import { setTimeout as delay } from 'node:timers/promises';
+import process from 'node:process';
 
 const MCP_SERVER = './build/index.js';
 const bridgePortRaw = process.env.GODOT_BRIDGE_PORT || process.env.MCP_BRIDGE_PORT || process.env.GOPEAK_BRIDGE_PORT;
@@ -105,7 +106,7 @@ async function main() {
 
   // 1. Start MCP server
   console.log('📦 Starting MCP server...');
-  const server = spawn('node', [MCP_SERVER], {
+  const server = spawn(process.execPath, [MCP_SERVER], {
     env: { ...process.env, GODOT_PATH, DEBUG: 'true', GOPEAK_TOOL_PROFILE: 'compact', GOPEAK_BRIDGE_PORT: String(bridgePort), GOPEAK_BRIDGE_HOST: BRIDGE_HOST },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
