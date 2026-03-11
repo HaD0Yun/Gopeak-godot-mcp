@@ -758,7 +758,10 @@ class GodotServer {
     }
   }
 
-  private async handleRuntimeCommand(command: string, args: unknown): Promise<{ content: Array<{ type: string; text: string }> }> {
+  private async handleRuntimeCommand(
+    command: string,
+    args: unknown,
+  ): Promise<{ content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> }> {
     const params = (args && typeof args === 'object') ? args as Record<string, unknown> : {};
     const RUNTIME_PORT = 7777;
     const RUNTIME_HOST = '127.0.0.1';
@@ -795,7 +798,7 @@ class GodotServer {
           resolve({
             content: [
               { type: 'text', text: `Screenshot captured: ${parsed.width}x${parsed.height} ${parsed.format}` },
-              { type: 'image', text: parsed.data },
+              { type: 'image', data: parsed.data, mimeType: 'image/png' },
             ],
           });
           return;

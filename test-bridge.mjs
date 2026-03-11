@@ -283,6 +283,8 @@ async function main() {
   let statusToolName = 'get_editor_status';
   let runtimeStatusToolName = 'get_runtime_status';
   let sceneCreateToolName = 'create_scene';
+  let captureScreenshotToolName = 'capture_screenshot';
+  let captureViewportToolName = 'capture_viewport';
   try {
     const tools = await listAllTools();
     const toolNames = new Set(tools.map(tool => tool.name));
@@ -299,6 +301,8 @@ async function main() {
     statusToolName = chooseTool(toolNames, ['editor.status', 'get_editor_status']);
     runtimeStatusToolName = chooseTool(toolNames, ['runtime.status', 'get_runtime_status']);
     sceneCreateToolName = chooseTool(toolNames, ['scene.create', 'create_scene']);
+    captureScreenshotToolName = chooseTool(toolNames, ['capture_screenshot']);
+    captureViewportToolName = chooseTool(toolNames, ['capture_viewport']);
 
     const migratedTools = [
       { legacy: 'create_scene', compact: 'scene.create' },
@@ -419,7 +423,18 @@ async function main() {
       try {
         const request = JSON.parse(line);
         socket.write(`${JSON.stringify({ type: 'welcome', protocol: 'godot_mcp_runtime', version: '1.0.0' })}\n`);
-        socket.write(`${JSON.stringify({ type: 'pong', id: request.id, timestamp: Date.now() })}\n`);
+        if (request.command === 'ping') {
+          socket.write(`${JSON.stringify({ type: 'pong', id: request.id, timestamp: Date.now() })}\n`);
+        } else if (request.command === 'capture_screenshot' || request.command === 'capture_viewport') {
+          socket.write(`${JSON.stringify({
+            type: 'screenshot',
+            id: request.id,
+            data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0r0AAAAASUVORK5CYII=',
+            width: 1,
+            height: 1,
+            format: 'png',
+          })}\n`);
+        }
       } catch {
         socket.write(`${JSON.stringify({ error: 'invalid_json' })}\n`);
       }
@@ -445,6 +460,40 @@ async function main() {
     ok('get_runtime_status reports connected when runtime addon responds to ping');
   } else {
     fail('get_runtime_status connected state', JSON.stringify(runtimeConnectedResponses[0] || null));
+  }
+
+  stdout = '';
+  server.stdin.write(rpcMsg('tools/call', {
+    name: captureScreenshotToolName,
+    arguments: {}
+  }));
+  await delay(1500);
+
+  const captureScreenshotResponses = parseResponses(stdout);
+  const captureScreenshotResult = captureScreenshotResponses.find(response => response.result?.content)?.result;
+  const captureScreenshotContent = captureScreenshotResult?.content || [];
+  const screenshotImage = captureScreenshotContent.find(chunk => chunk?.type === 'image');
+  if (screenshotImage?.data && screenshotImage?.mimeType === 'image/png' && !('text' in screenshotImage)) {
+    ok('capture_screenshot returns MCP-valid image content');
+  } else {
+    fail('capture_screenshot image content', JSON.stringify(captureScreenshotResponses[0] || null));
+  }
+
+  stdout = '';
+  server.stdin.write(rpcMsg('tools/call', {
+    name: captureViewportToolName,
+    arguments: { viewportPath: '/root' }
+  }));
+  await delay(1500);
+
+  const captureViewportResponses = parseResponses(stdout);
+  const captureViewportResult = captureViewportResponses.find(response => response.result?.content)?.result;
+  const captureViewportContent = captureViewportResult?.content || [];
+  const viewportImage = captureViewportContent.find(chunk => chunk?.type === 'image');
+  if (viewportImage?.data && viewportImage?.mimeType === 'image/png' && !('text' in viewportImage)) {
+    ok('capture_viewport returns MCP-valid image content');
+  } else {
+    fail('capture_viewport image content', JSON.stringify(captureViewportResponses[0] || null));
   }
 
   await new Promise((resolve, reject) => runtimeServer.close((error) => error ? reject(error) : resolve()));
