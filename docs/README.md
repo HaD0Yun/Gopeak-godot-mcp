@@ -9,6 +9,7 @@ This folder groups design and release references for GoPeak.
 
 ## Benchmark Planning
 
+- [gopeak-cli-vs-mcp-validation.md](./gopeak-cli-vs-mcp-validation.md): benchmark guardrails, shared-core readiness map, and code-quality review notes for the CLI-vs-MCP validation track.
 - [unity-mcp-benchmark-plan.md](./unity-mcp-benchmark-plan.md): Unity-MCP benchmark lens and execution tracks for parity hardening.
 
 ## Release

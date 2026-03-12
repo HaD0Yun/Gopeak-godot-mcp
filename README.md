@@ -191,6 +191,7 @@ GoPeak also exposes two CLI bin names:
 - [Documentation Map](docs/README.md)
 - [Architecture](docs/architecture.md)
 - [Platform Roadmap](docs/platform-roadmap.md)
+- [GoPeak CLI vs MCP Validation Notes](docs/gopeak-cli-vs-mcp-validation.md)
 - [Unity-MCP Benchmark Plan](docs/unity-mcp-benchmark-plan.md)
 - [Release Process](docs/release-process.md)
 
