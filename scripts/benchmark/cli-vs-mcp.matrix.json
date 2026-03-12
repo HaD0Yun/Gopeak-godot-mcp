@@ -13,6 +13,7 @@
       "family": "scene_script_mutation",
       "label": "Create scene",
       "setup": { "kind": "fresh_copy" },
+      "requires": { "mcp": ["editor_bridge"] },
       "cli": {
         "command": "scene-create",
         "args": {

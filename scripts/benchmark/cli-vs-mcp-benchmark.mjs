@@ -224,19 +224,40 @@ async function runMcpTask(task, mcp, projectPath) {
 function summarize(results) {
   const summary = {};
   for (const surface of ['cli', 'mcp']) {
-    const surfaceRuns = results.filter((entry) => entry.surface === surface && entry.ok);
-    if (surfaceRuns.length === 0) {
-      summary[surface] = { okRuns: 0 };
-      continue;
-    }
+    const surfaceRuns = results.filter((entry) => entry.surface === surface);
+    const successfulRuns = surfaceRuns.filter((entry) => entry.ok);
+    const skippedRuns = surfaceRuns.filter((entry) => entry.skipped);
     summary[surface] = {
-      okRuns: surfaceRuns.length,
-      medianDurationMs: median(surfaceRuns.map((entry) => entry.durationMs)),
-      medianInvocationCount: median(surfaceRuns.map((entry) => entry.invocationCount)),
-      medianInterfaceTokenEstimate: median(surfaceRuns.map((entry) => entry.interfaceTokenEstimate)),
+      okRuns: successfulRuns.length,
+      skippedRuns: skippedRuns.length,
     };
+    if (successfulRuns.length > 0) {
+      summary[surface].medianDurationMs = median(successfulRuns.map((entry) => entry.durationMs));
+      summary[surface].medianInvocationCount = median(successfulRuns.map((entry) => entry.invocationCount));
+      summary[surface].medianInterfaceTokenEstimate = median(successfulRuns.map((entry) => entry.interfaceTokenEstimate));
+    }
   }
   return summary;
+}
+
+async function detectCapabilities(mcp) {
+  const capabilities = {
+    editor_bridge: false,
+  };
+
+  try {
+    const { response } = await mcp.callTool('editor.status', {});
+    const text = response?.result?.content?.map((part) => part?.text || '').join('\n') || '';
+    const parsed = text ? JSON.parse(text) : {};
+    capabilities.editor_bridge = Boolean(parsed.connected);
+  } catch {}
+
+  return capabilities;
+}
+
+function getMissingRequirements(task, surface, capabilities) {
+  const required = task.requires?.[surface] || [];
+  return required.filter((requirement) => !capabilities[requirement]);
 }
 
 async function main() {
@@ -253,6 +274,7 @@ async function main() {
     GOPEAK_TOOL_PROFILE: matrix.baseline?.mcpProfile || 'compact',
   });
   await mcp.initialize();
+  const capabilities = await detectCapabilities(mcp);
 
   const runResults = [];
   try {
@@ -266,6 +288,28 @@ async function main() {
         for (const surface of ['cli', 'mcp']) {
           const fixture = ensureProjectCopy(sourceProjectPath, `${task.id}-${surface}-${iteration}`);
           try {
+            const missingRequirements = getMissingRequirements(task, surface, capabilities);
+            if (missingRequirements.length > 0) {
+              runResults.push({
+                taskId: task.id,
+                family: task.family,
+                label: task.label,
+                surface,
+                iteration,
+                projectPath: fixture.projectPath,
+                ok: false,
+                skipped: true,
+                skipReason: `missing capabilities: ${missingRequirements.join(', ')}`,
+                durationMs: 0,
+                invocationCount: 0,
+                interfaceTokenEstimate: 0,
+                stdout: '',
+                stderr: '',
+                assertionFailures: [],
+              });
+              continue;
+            }
+
             const surfaceResult = surface === 'cli'
               ? await runCliTask(task, fixture.projectPath, godotPath)
               : await runMcpTask(task, mcp, fixture.projectPath);
@@ -278,6 +322,7 @@ async function main() {
               iteration,
               projectPath: fixture.projectPath,
               ok: surfaceResult.ok && assertionFailures.length === 0,
+              skipped: false,
               durationMs: surfaceResult.durationMs,
               invocationCount: surfaceResult.invocationCount,
               interfaceTokenEstimate: surfaceResult.interfaceTokenEstimate,
@@ -315,6 +360,7 @@ async function main() {
     mcpProfile: matrix.baseline?.mcpProfile || 'compact',
     iterations,
     generatedAt: new Date().toISOString(),
+    capabilities,
     tasks: grouped,
   };
 
