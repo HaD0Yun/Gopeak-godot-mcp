@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "baseline": {
+    "mcpProfile": "compact",
+    "notes": [
+      "Compact MCP is the primary baseline.",
+      "Validation task preserves MCP compatibility checks by activating the import_export dynamic group before validate_project."
+    ]
+  },
+  "tasks": [
+    {
+      "id": "scene_create",
+      "family": "scene_script_mutation",
+      "label": "Create scene",
+      "setup": { "kind": "fresh_copy" },
+      "cli": {
+        "command": "scene-create",
+        "args": {
+          "scenePath": "scenes/BenchmarkScene.tscn",
+          "rootNodeType": "Node2D"
+        }
+      },
+      "mcp": {
+        "calls": [
+          {
+            "tool": "scene.create",
+            "args": {
+              "scenePath": "scenes/BenchmarkScene.tscn",
+              "rootNodeType": "Node2D"
+            }
+          }
+        ]
+      },
+      "assertions": [
+        { "type": "path_exists", "path": "scenes/BenchmarkScene.tscn" }
+      ]
+    },
+    {
+      "id": "script_modify",
+      "family": "scene_script_mutation",
+      "label": "Modify script",
+      "setup": { "kind": "fresh_copy" },
+      "cli": {
+        "command": "script-modify",
+        "args": {
+          "scriptPath": "scripts/player.gd",
+          "modifications": [
+            {
+              "type": "add_function",
+              "name": "benchmark_marker",
+              "params": "",
+              "returnType": "void",
+              "body": "\tprint(\"benchmark-marker\")",
+              "position": "end"
+            }
+          ]
+        }
+      },
+      "mcp": {
+        "calls": [
+          {
+            "tool": "script.modify",
+            "args": {
+              "scriptPath": "scripts/player.gd",
+              "modifications": [
+                {
+                  "type": "add_function",
+                  "name": "benchmark_marker",
+                  "params": "",
+                  "returnType": "void",
+                  "body": "\tprint(\"benchmark-marker\")",
+                  "position": "end"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "assertions": [
+        { "type": "file_contains", "path": "scripts/player.gd", "needle": "func benchmark_marker() -> void:" }
+      ]
+    },
+    {
+      "id": "validate_project",
+      "family": "build_validation",
+      "label": "Validate project",
+      "setup": { "kind": "fresh_copy" },
+      "cli": {
+        "command": "validate-project",
+        "args": {
+          "includeSuggestions": true
+        }
+      },
+      "mcp": {
+        "calls": [
+          {
+            "tool": "tool.groups",
+            "args": {
+              "action": "activate",
+              "group": "import_export"
+            }
+          },
+          {
+            "tool": "validate_project",
+            "args": {
+              "includeSuggestions": true
+            }
+          }
+        ]
+      },
+      "assertions": [
+        { "type": "stdout_nonempty" }
+      ]
+    }
+  ]
+}

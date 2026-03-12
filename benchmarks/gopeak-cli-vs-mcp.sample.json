@@ -1,0 +1,131 @@
+{
+  "name": "gopeak-cli-vs-mcp-sample",
+  "repetitions": 3,
+  "tasks": [
+    {
+      "id": "script-create",
+      "family": "script-mutation",
+      "description": "Create a benchmark script in a real Godot project",
+      "cli": {
+        "command": [
+          "script",
+          "create",
+          "--project-path",
+          "/absolute/path/to/project",
+          "--script-path",
+          "scripts/benchmark_cli_vs_mcp_{surface}_{run}.gd",
+          "--extends",
+          "Node"
+        ],
+        "interfaceText": "gopeak script create --project-path /absolute/path/to/project --script-path scripts/benchmark_cli_vs_mcp_{surface}_{run}.gd --extends Node"
+      },
+      "mcp": {
+        "tool": "script.create",
+        "args": {
+          "projectPath": "/absolute/path/to/project",
+          "scriptPath": "scripts/benchmark_cli_vs_mcp_{surface}_{run}.gd",
+          "extends": "Node"
+        }
+      }
+    },
+    {
+      "id": "script-modify",
+      "family": "script-mutation",
+      "description": "Append a deterministic function to the benchmark script",
+      "cli": {
+        "command": [
+          "script",
+          "modify",
+          "--project-path",
+          "/absolute/path/to/project",
+          "--script-path",
+          "scripts/benchmark_cli_vs_mcp_{surface}_{run}.gd",
+          "--modifications",
+          "[{\"type\":\"add_function\",\"name\":\"benchmark_ping\",\"body\":\"return \\\"pong\\\"\",\"returnType\":\"String\"}]"
+        ],
+        "interfaceText": "gopeak script modify --project-path /absolute/path/to/project --script-path scripts/benchmark_cli_vs_mcp_{surface}_{run}.gd --modifications '[...]'"
+      },
+      "mcp": {
+        "tool": "script.modify",
+        "args": {
+          "projectPath": "/absolute/path/to/project",
+          "scriptPath": "scripts/benchmark_cli_vs_mcp_{surface}_{run}.gd",
+          "modifications": [
+            {
+              "type": "add_function",
+              "name": "benchmark_ping",
+              "body": "return \"pong\"",
+              "returnType": "String"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "editor-run",
+      "family": "run-debug",
+      "description": "Launch the project under debug",
+      "cli": {
+        "command": [
+          "editor",
+          "run",
+          "--project-path",
+          "/absolute/path/to/project"
+        ],
+        "interfaceText": "gopeak editor run --project-path /absolute/path/to/project"
+      },
+      "mcp": {
+        "tool": "editor.run",
+        "args": {
+          "projectPath": "/absolute/path/to/project"
+        }
+      }
+    },
+    {
+      "id": "debug-output",
+      "family": "run-debug",
+      "description": "Read captured debug output after running the project",
+      "cli": {
+        "command": [
+          "debug",
+          "output",
+          "--reason",
+          "benchmark"
+        ],
+        "interfaceText": "gopeak debug output --reason benchmark"
+      },
+      "mcp": {
+        "tool": "editor.debug_output",
+        "args": {
+          "reason": "benchmark"
+        }
+      }
+    },
+    {
+      "id": "project-export",
+      "family": "export-build",
+      "description": "Export the project using an existing preset",
+      "cli": {
+        "command": [
+          "project",
+          "export",
+          "--project-path",
+          "/absolute/path/to/project",
+          "--preset",
+          "Linux/X11",
+          "--output-path",
+          "/absolute/path/to/build/game.x86_64"
+        ],
+        "interfaceText": "gopeak project export --project-path /absolute/path/to/project --preset Linux/X11 --output-path /absolute/path/to/build/game.x86_64"
+      },
+      "mcp": {
+        "tool": "export.run",
+        "args": {
+          "projectPath": "/absolute/path/to/project",
+          "preset": "Linux/X11",
+          "outputPath": "/absolute/path/to/build/game.x86_64"
+        }
+      }
+    }
+  ]
+}
