@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 const execFile = promisify(execFileCb);
 const REPO = '/home/yun/Gopeak-godot-mcp';
 const CLI = join(REPO, 'build/cli.js');
+const SCRIPT_BENCHMARK = join(REPO, 'scripts', 'benchmark', 'cli-vs-mcp-benchmark.mjs');
 const FIXTURE = '/home/yun/gopeak-demo';
 const ARTIFACT_DIR = '/home/yun/.omx/artifacts/gopeak-cli-vs-mcp/worker-2';
 
@@ -114,6 +115,25 @@ async function main() {
     const mcpScript = await readFile(join(projectCopy, 'scripts/worker2_mcp_create.gd'), 'utf8');
     assert.match(cliScript, /func worker_two_cli\(\)/);
     assert.match(mcpScript, /func worker_two_mcp\(\)/);
+
+    const { stdout: scriptBenchmarkStdout } = await execFile(process.execPath, [
+      SCRIPT_BENCHMARK,
+      '--projectPath', projectCopy,
+      '--tasks', 'scene_create',
+      '--iterations', '1',
+    ], {
+      cwd: REPO,
+      env: { ...process.env, GOPEAK_TOOL_PROFILE: 'compact' },
+      maxBuffer: 1024 * 1024 * 20,
+    });
+    const scriptBenchmark = JSON.parse(scriptBenchmarkStdout);
+    assert.equal(scriptBenchmark.tasks[0].summary.cli.okRuns, 1);
+    assert.equal(scriptBenchmark.capabilities.editor_bridge, false);
+    assert.equal(scriptBenchmark.tasks[0].summary.mcp.okRuns, 0);
+    assert.equal(scriptBenchmark.tasks[0].summary.mcp.skippedRuns, 1);
+    assert.equal(scriptBenchmark.tasks[0].runs[1].surface, 'mcp');
+    assert.equal(scriptBenchmark.tasks[0].runs[1].skipped, true);
+    assert.equal(scriptBenchmark.tasks[0].runs[1].skipReason, 'missing capabilities: editor_bridge');
 
     console.log('PASS test-benchmark-cli-vs-mcp');
     console.log(`report=${outPath}`);
