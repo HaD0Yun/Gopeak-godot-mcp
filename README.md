@@ -8,14 +8,13 @@
 [![](https://img.shields.io/github/last-commit/HaD0Yun/Gopeak-godot-mcp 'Last Commit')](https://github.com/HaD0Yun/Gopeak-godot-mcp/commits/main)
 [![](https://img.shields.io/github/stars/HaD0Yun/Gopeak-godot-mcp 'Stars')](https://github.com/HaD0Yun/Gopeak-godot-mcp/stargazers)
 [![](https://img.shields.io/github/forks/HaD0Yun/Gopeak-godot-mcp 'Forks')](https://github.com/HaD0Yun/Gopeak-godot-mcp/network/members)
-[![](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/FPKn4Xp8)
 [![](https://img.shields.io/badge/License-MIT-red.svg 'MIT License')](https://opensource.org/licenses/MIT)
 
 ![GoPeak Hero](assets/gopeak-hero-v2.png)
 
 **GoPeak is an MCP server for Godot that lets AI assistants run, inspect, modify, and debug real projects end-to-end.**
 
-> Join the GoPeak Discord community: https://discord.gg/FPKn4Xp8
+> Discord community chat is temporarily unavailable while the invite link is refreshed. Please use GitHub Discussions in the meantime: https://github.com/HaD0Yun/Gopeak-godot-mcp/discussions
 
 ---
 
