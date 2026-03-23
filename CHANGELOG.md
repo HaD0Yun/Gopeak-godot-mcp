@@ -2,6 +2,16 @@
 
 All notable changes to GoPeak (godot-mcp) will be documented in this file.
 
+## [2.3.5] - 2026-03-24
+
+### Changed
+- Extracted static server metadata out of `src/index.ts` into focused helper modules to reduce entrypoint sprawl without changing MCP behavior.
+- Shell-hook installation is now explicitly opt-in during postinstall; `gopeak setup` remains the supported manual path.
+
+### Improved
+- Added metadata consistency regression coverage for package/server version and initialize-time server info.
+- Synchronized release-facing docs and metadata with the current prompt/resource/tool surface and install behavior.
+
 ## [2.3.4] - 2026-03-21
 
 ### Fixed

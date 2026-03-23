@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.HaD0Yun/gopeak",
-  "description": "GoPeak \u2014 MCP server for Godot Engine with 110+ tools, compact/dynamic profiles, LSP, DAP, screenshots, and runtime automation.",
+  "description": "GoPeak — MCP server for Godot Engine with 110+ tools, compact/dynamic profiles, LSP, DAP, screenshots, and runtime automation.",
   "repository": {
     "url": "https://github.com/HaD0Yun/Gopeak-godot-mcp",
     "source": "github"
   },
-  "version": "2.3.4",
+  "version": "2.3.5",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "gopeak",
-      "version": "2.3.4",
+      "version": "2.3.5",
       "transport": {
         "type": "stdio"
       },
