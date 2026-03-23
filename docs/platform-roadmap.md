@@ -9,7 +9,7 @@ Ground truth from current repository:
 - MCP server entrypoint: `src/index.ts`
 - Tool system: mature and broad (`src/tools.ts` and related modules)
 - Resource support: present via `src/resources.ts`
-- Prompts capability: not yet first-class in MCP capability registration
+- Prompts capability: implemented and exposed in MCP capability registration
 - MCP transport in package metadata: stdio (`server.json`)
 - Internal bridge transport: HTTP+WS (`src/godot-bridge.ts`)
 

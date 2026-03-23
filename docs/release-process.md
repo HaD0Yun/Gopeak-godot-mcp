@@ -23,9 +23,10 @@ node scripts/bump-version.mjs patch --dry-run
 Run release checks before tagging:
 
 ```bash
-npm run build
-npx tsc --noEmit
-npm run smoke
+npm run ci
+npm run test:dynamic-groups
+npm run test:integration
+npm run test:setup
 ```
 
 ## 3) Commit + tag
@@ -47,3 +48,4 @@ git push origin main --tags
 
 - Keep release changes focused (version metadata + release notes only).
 - `server.json` package version must always match `package.json`.
+- Keep npm metadata, MCP registry metadata, and README capability claims in sync when tool counts or install behavior change.

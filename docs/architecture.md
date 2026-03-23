@@ -41,7 +41,7 @@ flowchart LR
 2. **Bridge transport is separate and internal**: the Godot bridge exposes HTTP/WS endpoints for addon/runtime integration (`src/godot-bridge.ts`).
 3. **Tools are mature** and broad (project/scene/script/runtime/LSP/DAP/visualizer families).
 4. **Resources exist but are narrow** (`godot://project/info`, `godot://scene/{path}`, `godot://script/{path}`, `godot://resource/{path}`).
-5. **Prompts are not yet first-class MCP capability** in server capability declaration.
+5. **Prompts are already exposed as a first-class MCP capability** alongside tools and resources.
 
 ---
 

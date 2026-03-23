@@ -542,7 +542,7 @@ Licença MIT - veja [LICENSE](LICENSE) para detalhes.
 
 ## Estatísticas
 
-- **95+ Ferramentas** — ferramentas abrangentes cobrindo gerenciamento de cenas, scripting, recursos, animação, configuração, depuração, screenshots, injeção de entrada, LSP, DAP e gerenciamento de assets
+- **110+ Ferramentas** — ferramentas abrangentes cobrindo gerenciamento de cenas, scripting, recursos, animação, configuração, depuração, screenshots, injeção de entrada, LSP, DAP e gerenciamento de assets
 - **Recursos MCP** — protocolo URI `godot://` para acesso direto a arquivos do projeto
 - **GDScript LSP** — diagnósticos em tempo real, completações, hover e símbolos via Language Server do Godot
 - **Adaptador de Depuração (DAP)** — breakpoints, stepping, stack traces e captura de saída do console

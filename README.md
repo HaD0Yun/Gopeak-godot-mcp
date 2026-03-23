@@ -39,6 +39,14 @@ npm install -g gopeak
 gopeak
 ```
 
+Optional shell hooks for update notifications are now **opt-in**:
+
+```bash
+gopeak setup
+```
+
+> `gopeak setup` only modifies supported bash/zsh rc files when you run it explicitly. `npm install` no longer installs shell hooks automatically.
+
 ### 2) Add MCP client config
 
 ```json
@@ -168,6 +176,12 @@ npm install -g gopeak
 gopeak
 ```
 
+Optional shell hooks for update notifications remain available via:
+
+```bash
+gopeak setup
+```
+
 ### C) From source
 
 ```bash
@@ -201,10 +215,12 @@ GitHub Actions runs on push/PR and executes:
 2. `npx tsc --noEmit`
 3. `npm run smoke`
 
-Run the same checks locally:
+Run the same checks locally before opening a PR:
 
 ```bash
 npm run ci
+npm run test:dynamic-groups
+npm run test:integration
 ```
 
 ---

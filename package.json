@@ -2,7 +2,7 @@
   "name": "gopeak",
   "version": "2.3.4",
   "mcpName": "io.github.HaD0Yun/gopeak",
-  "description": "GoPeak — The most comprehensive MCP server for Godot Engine. 95+ tools: scene management, GDScript LSP diagnostics, DAP debugger, screenshot capture, input injection, ClassDB introspection, CC0 asset library. AI-assisted game development with Claude, Cursor, Cline, OpenCode.",
+  "description": "GoPeak — MCP server for Godot Engine with 110+ tools, compact/dynamic profiles, GDScript LSP, DAP debugger, screenshots, input injection, and CC0 asset search.",
   "type": "module",
   "main": "./build/index.js",
   "bin": {
@@ -25,12 +25,13 @@
     "test:ci": "npm run test:smoke",
     "ci": "npm run build && npm run typecheck && npm run test:ci",
     "prepare": "npm run build",
-    "postinstall": "node -e \"try{require('child_process').execFileSync(process.execPath,['build/cli.js','setup','--silent'],{stdio:'ignore'})}catch{}\"",
+    "postinstall": "node scripts/postinstall.mjs",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
     "pack": "npm pack --dry-run",
     "version:bump": "node scripts/bump-version.mjs",
-    "test:setup": "npm run build && node test-setup-hooks.mjs"
+    "test:setup": "npm run build && node test-setup-hooks.mjs && node test-metadata-consistency.mjs",
+    "test:metadata": "npm run build && node test-metadata-consistency.mjs"
   },
   "engines": {
     "node": ">=18"

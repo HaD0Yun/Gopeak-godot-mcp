@@ -1,187 +1,93 @@
-# Contributing to Godot MCP
+# Contributing to GoPeak
 
-Thank you for considering contributing to Godot MCP! This document outlines the process for contributing to the project.
+Thanks for contributing to GoPeak. This guide focuses on the current repository layout and the checks we expect before review.
 
-## Code of Conduct
+## Before you start
 
-By participating in this project, you agree to maintain a respectful and inclusive environment for everyone.
+- Search existing GitHub issues and pull requests before starting overlapping work.
+- Prefer small, reviewable changes over broad rewrites.
+- Keep user-visible behavior stable unless the change is explicitly intended to modify it.
+- When touching packaging or installation flows, preserve the current opt-in shell-hook behavior (`gopeak setup`) and avoid silent shell rc mutations during `npm install`.
 
-## How Can I Contribute?
+## Development setup
 
-### Reporting Bugs
-
-- Check if the bug has already been reported in the Issues section
-- Use the bug report template if available
-- Include detailed steps to reproduce the bug
-- Include any relevant logs or screenshots
-- Specify your environment (OS, Godot version, etc.)
-
-### Suggesting Enhancements
-
-- Check if the enhancement has already been suggested in the Issues section
-- Use the feature request template if available
-- Clearly describe the enhancement and its benefits
-- Consider how the enhancement fits into the project's scope
-
-### Pull Requests
-
-1. Fork the repository
-2. Create a new branch for your feature or bugfix (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests if available
-5. Commit your changes with clear commit messages
-6. Push to your branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-## Development Process
-
-### Setting Up the Development Environment
-
-1. Clone the repository
-2. Install dependencies with `npm install`
-3. Build the project with `npm run build`
-4. For development with auto-rebuild, use `npm run watch`
-
-### Project Structure
-
-```
-godot-mcp/
-├── src/             # Source code
-│   └── index.ts     # Main server implementation
-├── build/           # Compiled JavaScript (generated)
-├── tests/           # Test files (future)
-├── examples/        # Example Godot projects (future)
-├── LICENSE          # MIT License
-├── README.md        # Documentation
-├── CONTRIBUTING.md  # Contribution guidelines
-├── package.json     # Project configuration
-└── tsconfig.json    # TypeScript configuration
+```bash
+git clone https://github.com/HaD0Yun/Gopeak-godot-mcp.git
+cd Gopeak-godot-mcp
+npm install
+npm run build
 ```
 
-### Code Style
+Helpful commands:
 
-- Follow the existing code style in the project
-- Use TypeScript for type safety
-- Include JSDoc comments for all functions and classes
-- Write clear and descriptive variable and function names
-- Use meaningful interfaces for complex objects
-- Handle errors gracefully with detailed error messages
-
-### Debugging
-
-For debugging the MCP server:
-
-1. Set the `DEBUG` environment variable to `true`
-2. Use the MCP Inspector for interactive debugging:
-   ```bash
-   npm run inspector
-   ```
-3. Check the logs for detailed information about what's happening
-
-### Adding New Tools
-
-When adding new tools to the MCP server:
-
-1. Define the tool in the `setupToolHandlers` method
-2. Create a handler method for the tool
-3. Add proper input validation and error handling
-4. Update the README.md with documentation for the new tool
-5. Update the Features section in the README.md
-6. Update the autoApprove section in the configuration examples
-7. Add tests for the new functionality
-
-#### Recently Added Tools
-
-The following tools have been recently added:
-
-- **get_project_info**: Retrieves metadata about a Godot project
-  - Analyzes project structure
-  - Returns information about scenes, scripts, and assets
-  - Helps LLMs understand the organization of Godot projects
-  
-- **capture_screenshot**: Takes a screenshot of a running Godot project
-  - Requires an active Godot process
-  - Saves the screenshot to the specified path
-  - Useful for visual debugging and feedback
-
-Example:
-
-```typescript
-// In setupToolHandlers
-{
-  name: 'your_new_tool',
-  description: 'Description of what your tool does',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      param1: {
-        type: 'string',
-        description: 'Description of parameter 1',
-      },
-    },
-    required: ['param1'],
-  },
-}
-
-// Add handler method
-private async handleYourNewTool(args: any) {
-  // Validate input
-  if (!args.param1) {
-    return this.createErrorResponse(
-      'Parameter 1 is required',
-      ['Provide a valid value for parameter 1']
-    );
-  }
-
-  try {
-    // Implement tool functionality
-    // ...
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: 'Result of your tool',
-        },
-      ],
-    };
-  } catch (error: any) {
-    return this.createErrorResponse(
-      `Failed to execute tool: ${error?.message || 'Unknown error'}`,
-      [
-        'Possible solution 1',
-        'Possible solution 2'
-      ]
-    );
-  }
-}
+```bash
+npm run watch              # TypeScript watch mode
+npm run inspector          # MCP inspector against build/index.js
+npm run test:setup         # Shell-hook regression checks
 ```
 
-### Cross-Platform Compatibility
+## Repository map
 
-When making changes, ensure they work across different platforms:
+```text
+.
+├── src/
+│   ├── index.ts           # MCP server entrypoint / current main orchestration surface
+│   ├── cli*.ts            # CLI entrypoint and setup/check/star helpers
+│   ├── resources.ts       # MCP resources
+│   ├── prompts.ts         # MCP prompts
+│   ├── godot-bridge.ts    # Bridge transport and runtime integration
+│   ├── providers/         # Asset provider integrations
+│   └── visualizer/        # Browser visualizer assets
+├── docs/                  # Architecture, roadmap, release docs
+├── test-*.mjs             # Integration and regression coverage
+├── server.json            # MCP registry metadata
+└── package.json           # npm metadata and scripts
+```
 
-- Use path utilities from Node.js (`path.join`, etc.) instead of hardcoded path separators
-- Test on different operating systems if possible
-- Consider different Godot installation locations
-- Use environment variables for configuration
+## Expected workflow
 
-## Testing
+1. Make the smallest change that solves the problem.
+2. Reuse existing helpers and naming patterns before introducing new abstractions.
+3. Update docs when behavior, install flow, or capability claims change.
+4. Keep `package.json`, `server.json`, README claims, and release notes aligned when metadata changes.
 
-- Add tests for new features when possible
-- Ensure all tests pass before submitting a Pull Request
-- Test on different platforms if possible
-- Test with different Godot versions
+## Verification before PR
 
-## Documentation
+Run the repository checks that cover your area. For most feature or packaging changes, run all of these:
 
-- Keep README.md up to date with new features
-- Document all tools and their parameters
-- Include examples for new functionality
-- Update the troubleshooting section with common issues
+```bash
+npm run ci
+npm run test:dynamic-groups
+npm run test:integration
+npm run test:setup
+```
 
-## Questions?
+If a command is not relevant or fails for an existing unrelated reason, call that out in the PR description with exact output.
 
-If you have any questions about contributing, feel free to open an issue for discussion.
+## Capability changes
 
-Thank you for your contributions!
+When adding or changing tools, resources, prompts, or CLI behavior:
+
+- update the implementation and any related schema/metadata
+- document the user-facing behavior in `README.md` and/or `docs/`
+- keep compact/full profile behavior and aliases backward-compatible when possible
+- add or update regression coverage near the affected area
+
+## Documentation changes
+
+Prefer repository-grounded documentation over aspirational notes.
+
+- Use `docs/platform-roadmap.md` for active roadmap/planning material.
+- Use `docs/architecture.md` for structural decisions and boundaries.
+- Keep root-level summary docs (`README.md`, `ROADMAP.md`, `CONTRIBUTING.md`) aligned with the codebase instead of maintaining speculative feature backlogs.
+
+## Pull requests
+
+A good PR description includes:
+
+- what changed
+- why it changed
+- verification commands and results
+- any follow-up risks or compatibility notes
+
+Thanks again for helping improve GoPeak.
