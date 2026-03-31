@@ -11,6 +11,7 @@
   },
   "files": [
     "build",
+    "scripts",
     "README.md",
     "LICENSE"
   ],
@@ -38,15 +39,15 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
+    "@types/node": "^20.11.24",
     "axios": "^1.13.6",
     "fs-extra": "^11.2.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "typescript": "^5.3.3"
   },
   "devDependencies": {
-    "@types/node": "^20.11.24",
     "@types/ws": "^8.5.12",
-    "esbuild": "^0.24.2",
-    "typescript": "^5.3.3"
+    "esbuild": "^0.24.2"
   },
   "overrides": {
     "@hono/node-server": "^1.19.11",
