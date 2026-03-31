@@ -11,6 +11,7 @@
   },
   "files": [
     "build",
+    "scripts/postinstall.mjs",
     "README.md",
     "LICENSE"
   ],
@@ -30,8 +31,9 @@
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
     "pack": "npm pack --dry-run",
     "version:bump": "node scripts/bump-version.mjs",
-    "test:setup": "npm run build && node test-setup-hooks.mjs && node test-metadata-consistency.mjs",
-    "test:metadata": "npm run build && node test-metadata-consistency.mjs"
+    "test:setup": "npm run build && node test-setup-hooks.mjs && node test-metadata-consistency.mjs && node test-packaging-consistency.mjs",
+    "test:metadata": "npm run build && node test-metadata-consistency.mjs",
+    "test:packaging": "npm run build && node test-packaging-consistency.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -50,7 +52,8 @@
   },
   "overrides": {
     "@hono/node-server": "^1.19.11",
-    "hono": "4.12.7"
+    "hono": "4.12.7",
+    "path-to-regexp": "8.4.1"
   },
   "license": "MIT",
   "repository": {
