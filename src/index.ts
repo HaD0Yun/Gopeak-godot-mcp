@@ -748,6 +748,109 @@ class GodotServer {
     return compactTools;
   }
 
+  private jsonTextResponse(payload: unknown): { content: Array<{ type: string; text: string }> } {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(payload, null, 2),
+      }],
+    };
+  }
+
+  private buildLegacyToCompactAliasMap(): Map<string, string> {
+    return new Map(
+      Object.entries(this.compactAliasToLegacy).map(([compactName, legacyName]) => [legacyName, compactName]),
+    );
+  }
+
+  private buildToolGroupLookup(): Map<string, { group: string; type: 'core' | 'dynamic' }> {
+    const toolToGroup = new Map<string, { group: string; type: 'core' | 'dynamic' }>();
+    const registerGroups = (groups: Record<string, { tools: string[] }>, type: 'core' | 'dynamic') => {
+      for (const [groupName, group] of Object.entries(groups)) {
+        for (const toolName of group.tools) {
+          toolToGroup.set(toolName, { group: groupName, type });
+        }
+      }
+    };
+
+    registerGroups(CORE_TOOL_GROUPS, 'core');
+    registerGroups(TOOL_GROUPS, 'dynamic');
+
+    return toolToGroup;
+  }
+
+  private getActivatedToolNames(): Set<string> {
+    const activatedToolNames = new Set<string>();
+
+    for (const groupName of this.activeGroups) {
+      const group = TOOL_GROUPS[groupName];
+      if (!group) {
+        continue;
+      }
+
+      for (const toolName of group.tools) {
+        activatedToolNames.add(toolName);
+      }
+    }
+
+    return activatedToolNames;
+  }
+
+  private getAvailableDynamicGroups(): string[] {
+    return Object.keys(TOOL_GROUPS);
+  }
+
+  private getUnknownDynamicGroupError(groupName: string): string {
+    return `Unknown group '${groupName}'. Available dynamic groups: ${this.getAvailableDynamicGroups().join(', ')}`;
+  }
+
+  private notifyToolListChanged(): void {
+    this.cachedToolDefinitions = [];
+    this.server.sendToolListChanged().catch(() => {});
+  }
+
+  private autoActivateMatchingGroups(query: string): string[] {
+    if (!query || this.toolExposureProfile !== 'compact') {
+      return [];
+    }
+
+    const newlyActivated: string[] = [];
+    for (const [groupName, group] of Object.entries(TOOL_GROUPS)) {
+      if (this.activeGroups.has(groupName)) {
+        continue;
+      }
+
+      const hasMatchingKeyword = group.keywords.some((kw) => query.includes(kw) || kw.includes(query));
+      const hasMatchingToolName = group.tools.some((toolName) => toolName.toLowerCase().includes(query));
+      if (hasMatchingKeyword || hasMatchingToolName) {
+        this.activeGroups.add(groupName);
+        newlyActivated.push(groupName);
+      }
+    }
+
+    if (newlyActivated.length > 0) {
+      this.notifyToolListChanged();
+    }
+
+    return newlyActivated;
+  }
+
+  private setDynamicGroupActivation(groupName: string, active: boolean): boolean {
+    const wasActive = this.activeGroups.has(groupName);
+
+    if (active) {
+      this.activeGroups.add(groupName);
+    } else {
+      this.activeGroups.delete(groupName);
+    }
+
+    if (wasActive !== active) {
+      this.notifyToolListChanged();
+    }
+
+    return wasActive;
+  }
+
   private sanitizeToolsForList(tools: MCPToolDefinition[]): MCPToolDefinition[] {
     const seenNames = new Map<string, string>();
 
@@ -783,14 +886,7 @@ class GodotServer {
 
     // Add dynamically activated group tools (using their legacy names)
     if (this.activeGroups.size > 0) {
-      const activatedToolNames = new Set<string>();
-      for (const groupName of this.activeGroups) {
-        const group = TOOL_GROUPS[groupName];
-        if (!group) continue;
-        for (const toolName of group.tools) {
-          activatedToolNames.add(toolName);
-        }
-      }
+      const activatedToolNames = this.getActivatedToolNames();
 
       for (const tool of allTools) {
         if (activatedToolNames.has(tool.name)) {
@@ -868,23 +964,8 @@ class GodotServer {
     const limit = Math.max(1, Math.min(100, rawLimit));
 
     const tools = this.getAllToolDefinitions();
-    const reverseAlias = new Map<string, string>();
-    for (const [compactName, legacyName] of Object.entries(this.compactAliasToLegacy)) {
-      reverseAlias.set(legacyName, compactName);
-    }
-
-    // Build tool → group reverse map (core + dynamic)
-    const toolToGroup = new Map<string, { group: string; type: 'core' | 'dynamic' }>();
-    for (const [groupName, group] of Object.entries(CORE_TOOL_GROUPS)) {
-      for (const toolName of group.tools) {
-        toolToGroup.set(toolName, { group: groupName, type: 'core' });
-      }
-    }
-    for (const [groupName, group] of Object.entries(TOOL_GROUPS)) {
-      for (const toolName of group.tools) {
-        toolToGroup.set(toolName, { group: groupName, type: 'dynamic' });
-      }
-    }
+    const reverseAlias = this.buildLegacyToCompactAliasMap();
+    const toolToGroup = this.buildToolGroupLookup();
 
     const filtered = tools.filter((tool) => {
       if (!query) return true;
@@ -906,41 +987,17 @@ class GodotServer {
     // Auto-activate matching tool groups when query matches their keywords
     // or when the query directly matches a group's tool NAME (not description).
     // This prevents over-activation from incidental description matches.
-    const newlyActivated: string[] = [];
-    if (query && this.toolExposureProfile === 'compact') {
-      for (const [groupName, group] of Object.entries(TOOL_GROUPS)) {
-        if (this.activeGroups.has(groupName)) continue;
-        // Activate if query matches a group keyword
-        const hasMatchingKeyword = group.keywords.some((kw) => query.includes(kw) || kw.includes(query));
-        // Or if query matches a tool NAME in the group (strict name-only match)
-        const hasMatchingToolName = group.tools.some((t) => t.toLowerCase().includes(query));
-        if (hasMatchingKeyword || hasMatchingToolName) {
-          this.activeGroups.add(groupName);
-          newlyActivated.push(groupName);
-        }
-      }
+    const newlyActivated = this.autoActivateMatchingGroups(query);
 
-      // Notify clients that tool list changed so they re-fetch
-      if (newlyActivated.length > 0) {
-        this.cachedToolDefinitions = []; // Clear cache to force rebuild
-        this.server.sendToolListChanged().catch(() => { /* ignore if not connected */ });
-      }
-    }
-
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          profile: this.toolExposureProfile,
-          totalTools: tools.length,
-          query: query || null,
-          returned: items.length,
-          activeGroups: Array.from(this.activeGroups),
-          newlyActivated: newlyActivated.length > 0 ? newlyActivated : undefined,
-          tools: items,
-        }, null, 2),
-      }],
-    };
+    return this.jsonTextResponse({
+      profile: this.toolExposureProfile,
+      totalTools: tools.length,
+      query: query || null,
+      returned: items.length,
+      activeGroups: Array.from(this.activeGroups),
+      newlyActivated: newlyActivated.length > 0 ? newlyActivated : undefined,
+      tools: items,
+    });
   }
 
   private async handleManageToolGroups(args: any): Promise<{ content: Array<{ type: string; text: string }> }> {
@@ -969,105 +1026,58 @@ class GodotServer {
         const allGroups = [...coreGroups, ...dynamicGroups];
         const totalCoreTools = coreGroups.reduce((sum, g) => sum + g.toolCount, 0);
         const totalDynTools = dynamicGroups.reduce((sum, g) => sum + g.toolCount, 0);
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({
-              totalGroups: allGroups.length,
-              coreGroups: coreGroups.length,
-              dynamicGroups: dynamicGroups.length,
-              coreTools: totalCoreTools,
-              dynamicTools: totalDynTools,
-              groups: allGroups,
-            }, null, 2),
-          }],
-        };
+        return this.jsonTextResponse({
+          totalGroups: allGroups.length,
+          coreGroups: coreGroups.length,
+          dynamicGroups: dynamicGroups.length,
+          coreTools: totalCoreTools,
+          dynamicTools: totalDynTools,
+          groups: allGroups,
+        });
       }
 
       case 'activate': {
         if (groupName && CORE_TOOL_GROUPS[groupName]) {
-          return {
-            content: [{ type: 'text', text: JSON.stringify({ error: `'${groupName}' is a core group and always visible. No activation needed.` }) }],
-          };
+          return this.jsonTextResponse({ error: `'${groupName}' is a core group and always visible. No activation needed.` });
         }
         if (!groupName || !TOOL_GROUPS[groupName]) {
-          const available = Object.keys(TOOL_GROUPS).join(', ');
-          return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({ error: `Unknown group '${groupName}'. Available dynamic groups: ${available}` }),
-            }],
-          };
+          return this.jsonTextResponse({ error: this.getUnknownDynamicGroupError(groupName) });
         }
-        const wasNew = !this.activeGroups.has(groupName);
-        this.activeGroups.add(groupName);
-        if (wasNew) {
-          this.cachedToolDefinitions = [];
-          this.server.sendToolListChanged().catch(() => {});
-        }
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({
-              activated: groupName,
-              tools: TOOL_GROUPS[groupName].tools,
-              wasAlreadyActive: !wasNew,
-              activeGroups: Array.from(this.activeGroups),
-            }, null, 2),
-          }],
-        };
+        const wasAlreadyActive = this.setDynamicGroupActivation(groupName, true);
+        return this.jsonTextResponse({
+          activated: groupName,
+          tools: TOOL_GROUPS[groupName].tools,
+          wasAlreadyActive,
+          activeGroups: Array.from(this.activeGroups),
+        });
       }
 
       case 'deactivate': {
         if (groupName && CORE_TOOL_GROUPS[groupName]) {
-          return {
-            content: [{ type: 'text', text: JSON.stringify({ error: `'${groupName}' is a core group and cannot be deactivated.` }) }],
-          };
+          return this.jsonTextResponse({ error: `'${groupName}' is a core group and cannot be deactivated.` });
         }
         if (!groupName || !TOOL_GROUPS[groupName]) {
-          const available = Object.keys(TOOL_GROUPS).join(', ');
-          return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({ error: `Unknown group '${groupName}'. Available dynamic groups: ${available}` }),
-            }],
-          };
+          return this.jsonTextResponse({ error: this.getUnknownDynamicGroupError(groupName) });
         }
-        const wasActive = this.activeGroups.has(groupName);
-        this.activeGroups.delete(groupName);
-        if (wasActive) {
-          this.cachedToolDefinitions = [];
-          this.server.sendToolListChanged().catch(() => {});
-        }
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({
-              deactivated: groupName,
-              wasActive,
-              activeGroups: Array.from(this.activeGroups),
-            }, null, 2),
-          }],
-        };
+        const wasActive = this.setDynamicGroupActivation(groupName, false);
+        return this.jsonTextResponse({
+          deactivated: groupName,
+          wasActive,
+          activeGroups: Array.from(this.activeGroups),
+        });
       }
 
       case 'reset': {
         const previouslyActive = Array.from(this.activeGroups);
         this.activeGroups.clear();
         if (previouslyActive.length > 0) {
-          this.cachedToolDefinitions = [];
-          this.server.sendToolListChanged().catch(() => {});
+          this.notifyToolListChanged();
         }
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({
-              reset: true,
-              deactivated: previouslyActive,
-              activeGroups: [],
-            }, null, 2),
-          }],
-        };
+        return this.jsonTextResponse({
+          reset: true,
+          deactivated: previouslyActive,
+          activeGroups: [],
+        });
       }
 
       case 'status':
@@ -1087,16 +1097,11 @@ class GodotServer {
         }));
         const totalCoreTools = coreGroupDetails.reduce((sum, g) => sum + g.tools.length, 0);
         const totalDynamicTools = activeGroupDetails.reduce((sum, g) => sum + (g.tools?.length || 0), 0);
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({
-              coreGroups: { count: coreGroupDetails.length, tools: totalCoreTools, groups: coreGroupDetails },
-              dynamicGroups: { activeCount: this.activeGroups.size, tools: totalDynamicTools, groups: activeGroupDetails },
-              availableDynamicGroups: Object.keys(TOOL_GROUPS),
-            }, null, 2),
-          }],
-        };
+        return this.jsonTextResponse({
+          coreGroups: { count: coreGroupDetails.length, tools: totalCoreTools, groups: coreGroupDetails },
+          dynamicGroups: { activeCount: this.activeGroups.size, tools: totalDynamicTools, groups: activeGroupDetails },
+          availableDynamicGroups: this.getAvailableDynamicGroups(),
+        });
       }
     }
   }
