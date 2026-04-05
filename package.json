@@ -6,8 +6,8 @@
   "type": "module",
   "main": "./build/index.js",
   "bin": {
-    "gopeak": "./build/cli.js",
-    "godot-mcp": "./build/cli.js"
+    "gopeak": "build/cli.js",
+    "godot-mcp": "build/cli.js"
   },
   "files": [
     "build",
