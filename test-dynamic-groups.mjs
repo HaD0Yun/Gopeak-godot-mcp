@@ -3,6 +3,7 @@
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import process from 'node:process';
+import { sanitizeToolName } from './test-support/tool-name.mjs';
 
 const SERVER_ENTRY = './build/index.js';
 const GODOT_PATH = process.env.GODOT_PATH || '/home/doyun/Apps/godot-4.6-rc2/Godot_v4.6-rc2_linux.x86_64';
@@ -12,16 +13,6 @@ let failCount = 0;
 let nextId = 1;
 
 const OPENAI_COMPATIBLE_TOOL_NAME_PATTERN = /^[a-zA-Z0-9-]{1,128}$/;
-
-function sanitizeToolName(name) {
-  return name
-    .normalize('NFKD')
-    .replace(/[^\x00-\x7F]/g, '')
-    .replace(/[^a-zA-Z0-9-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 128) || 'tool';
-}
 
 function pass(message) {
   passCount += 1;

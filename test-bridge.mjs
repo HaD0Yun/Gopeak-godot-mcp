@@ -8,6 +8,7 @@ import { createServer } from 'node:net';
 import { WebSocket } from 'ws';
 import { setTimeout as delay } from 'node:timers/promises';
 import process from 'node:process';
+import { sanitizeToolName } from './test-support/tool-name.mjs';
 
 const MCP_SERVER = './build/index.js';
 const bridgePortRaw = process.env.GODOT_BRIDGE_PORT || process.env.MCP_BRIDGE_PORT || process.env.GOPEAK_BRIDGE_PORT;
@@ -58,16 +59,6 @@ function parseTextContent(response) {
   } catch {
     return null;
   }
-}
-
-function sanitizeToolName(name) {
-  return name
-    .normalize('NFKD')
-    .replace(/[^\x00-\x7F]/g, '')
-    .replace(/[^a-zA-Z0-9-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 128) || 'tool';
 }
 
 function expandToolCandidates(...names) {

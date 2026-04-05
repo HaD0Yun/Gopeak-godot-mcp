@@ -15,6 +15,7 @@ import process from 'node:process';
 import { spawn } from 'child_process';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { sanitizeToolName } from './test-support/tool-name.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER_PATH = join(__dirname, 'build', 'index.js');
@@ -23,16 +24,6 @@ const TEST_PROJECT = '/home/doyun/godot-new-project';
 let passed = 0;
 let failed = 0;
 let serverProcess = null;
-
-function sanitizeToolName(name) {
-  return name
-    .normalize('NFKD')
-    .replace(/[^\x00-\x7F]/g, '')
-    .replace(/[^a-zA-Z0-9-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 128) || 'tool';
-}
 
 function assert(condition, label) {
   if (condition) {
