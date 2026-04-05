@@ -1,6 +1,6 @@
 {
   "name": "gopeak",
-  "version": "2.3.5",
+  "version": "2.3.6",
   "mcpName": "io.github.HaD0Yun/gopeak",
   "description": "GoPeak — MCP server for Godot Engine with 110+ tools, compact/dynamic profiles, GDScript LSP, DAP debugger, screenshots, input injection, and CC0 asset search.",
   "type": "module",

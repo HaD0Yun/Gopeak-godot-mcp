@@ -4,6 +4,8 @@ All notable changes to GoPeak (godot-mcp) will be documented in this file.
 
 ## [Unreleased]
 
+## [2.3.6] - 2026-04-05
+
 ### Fixed
 - `modify_script` now passes operation params through temp files so Windows command-line escaping no longer breaks function bodies containing `\t`, `\r`, or quoted strings.
 - `get_editor_status` now reports bridge startup failures such as `EADDRINUSE`, making duplicate-server editor bridge conflicts visible instead of looking like a silent disconnect.
@@ -13,6 +15,7 @@ All notable changes to GoPeak (godot-mcp) will be documented in this file.
 ### Improved
 - Scene tool docs now show the required typed JSON shape for bridge-backed Godot values such as `Vector2`.
 - Dynamic tool-group docs now call out the reconnect/manual-refresh fallback for MCP clients that cache `tools/list` too aggressively.
+- Packaging consistency release checks now tolerate `npm pack --json` output even when npm prepends `prepare`/build logs.
 
 ## [2.3.5] - 2026-03-24
 

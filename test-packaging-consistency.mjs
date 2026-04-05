@@ -11,7 +11,9 @@ const packOutput = execFileSync(npmCmd, ['pack', '--dry-run', '--json', '--ignor
   encoding: 'utf8',
 });
 
-const packEntries = JSON.parse(packOutput);
+const jsonStart = packOutput.lastIndexOf('\n[');
+const normalizedPackOutput = jsonStart >= 0 ? packOutput.slice(jsonStart + 1) : packOutput.trim();
+const packEntries = JSON.parse(normalizedPackOutput);
 assert.ok(Array.isArray(packEntries) && packEntries.length > 0, 'npm pack --json should return at least one entry');
 
 const packedFiles = new Set((packEntries[0].files || []).map((file) => file.path));
