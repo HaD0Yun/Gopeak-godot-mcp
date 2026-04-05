@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
+import { findJsonRpcResponse } from './test-support/json-rpc.mjs';
 
 const pkg = JSON.parse(fs.readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 const serverManifest = JSON.parse(fs.readFileSync(new URL('./server.json', import.meta.url), 'utf8'));
@@ -57,18 +58,7 @@ try {
   const deadline = Date.now() + 10000;
   let initResponse;
   while (Date.now() < deadline && !initResponse) {
-    const lines = stdout.split('\n').map((line) => line.trim()).filter(Boolean);
-    for (const line of lines) {
-      try {
-        const parsed = JSON.parse(line);
-        if (parsed.id === 1) {
-          initResponse = parsed;
-          break;
-        }
-      } catch {
-        // ignore non-JSON lines
-      }
-    }
+    initResponse = findJsonRpcResponse(stdout, 1);
     if (!initResponse) {
       await delay(100);
     }

@@ -4,22 +4,9 @@ import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 import process from 'node:process';
 import { WebSocket } from 'ws';
+import { findJsonRpcResponse } from '../test-support/json-rpc.mjs';
 
 const OPENAI_COMPATIBLE_TOOL_NAME_PATTERN = /^[a-zA-Z0-9-]{1,128}$/;
-
-function parseResponses(data) {
-  return data
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => {
-      try {
-        return JSON.parse(line);
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean);
-}
 
 async function reservePort() {
   return await new Promise((resolve, reject) => {
@@ -126,7 +113,7 @@ async function main() {
     });
 
     await delay(1000);
-    const init = parseResponses(stdout).find((message) => message?.id === 1 && message?.result?.serverInfo);
+    const init = findJsonRpcResponse(stdout, 1);
     if (!init) {
       throw new Error('missing initialize response');
     }
@@ -139,7 +126,7 @@ async function main() {
     send({ jsonrpc: '2.0', id: PROMPTS_LIST_ID, method: 'prompts/list', params: {} });
     await delay(1000);
 
-    const prompts = parseResponses(stdout).find((message) => message?.id === PROMPTS_LIST_ID && Array.isArray(message?.result?.prompts));
+    const prompts = findJsonRpcResponse(stdout, PROMPTS_LIST_ID);
     if (!prompts || prompts.result.prompts.length < 2) {
       throw new Error('missing prompts/list response');
     }
@@ -148,7 +135,7 @@ async function main() {
     send({ jsonrpc: '2.0', id: TOOLS_LIST_ID, method: 'tools/list', params: {} });
 
     await delay(1500);
-    const tools = parseResponses(stdout).find((message) => message?.id === TOOLS_LIST_ID && Array.isArray(message?.result?.tools));
+    const tools = findJsonRpcResponse(stdout, TOOLS_LIST_ID);
     if (!tools || tools.result.tools.length === 0) {
       throw new Error('missing tools/list response');
     }

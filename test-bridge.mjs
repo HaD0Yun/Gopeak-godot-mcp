@@ -9,6 +9,7 @@ import { WebSocket } from 'ws';
 import { setTimeout as delay } from 'node:timers/promises';
 import process from 'node:process';
 import { sanitizeToolName } from './test-support/tool-name.mjs';
+import { parseJsonLines, parseTextContent } from './test-support/json-rpc.mjs';
 
 const MCP_SERVER = './build/index.js';
 const bridgePortRaw = process.env.GODOT_BRIDGE_PORT || process.env.MCP_BRIDGE_PORT || process.env.GOPEAK_BRIDGE_PORT;
@@ -38,27 +39,6 @@ function fail(name, err) {
 let msgId = 1;
 function rpcMsg(method, params = {}) {
   return JSON.stringify({ jsonrpc: '2.0', id: msgId++, method, params }) + '\n';
-}
-
-function parseResponses(data) {
-  const lines = data.split('\n').filter(l => l.trim());
-  const results = [];
-  for (const line of lines) {
-    try { results.push(JSON.parse(line)); } catch {}
-  }
-  return results;
-}
-
-function parseTextContent(response) {
-  const text = response?.result?.content?.map(chunk => chunk?.text || '').join('') || '';
-  if (!text) {
-    return null;
-  }
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
 }
 
 function expandToolCandidates(...names) {
@@ -143,7 +123,7 @@ async function main() {
   }));
   await delay(1000);
 
-  const initResponses = parseResponses(stdout);
+  const initResponses = parseJsonLines(stdout);
   if (initResponses.length > 0 && initResponses[0].result) {
     ok('MCP initialize response received');
     const caps = initResponses[0].result;
@@ -169,7 +149,7 @@ async function main() {
   server.stdin.write(rpcMsg('prompts/list'));
   await delay(1000);
 
-  const promptListResponses = parseResponses(stdout);
+  const promptListResponses = parseJsonLines(stdout);
   const promptListResult = promptListResponses.find(response => response.result?.prompts)?.result;
   if (promptListResult?.prompts?.length >= 2) {
     ok(`prompts/list returned ${promptListResult.prompts.length} prompt(s)`);
@@ -193,7 +173,7 @@ async function main() {
   }));
   await delay(1000);
 
-  const promptGetResponses = parseResponses(stdout);
+  const promptGetResponses = parseJsonLines(stdout);
   const promptGetResult = promptGetResponses.find(response => response.result?.messages)?.result;
   if (promptGetResult?.messages?.length > 0) {
     const promptText = promptGetResult.messages.map(message => message?.content?.text || '').join('\n');
@@ -209,7 +189,7 @@ async function main() {
   stdout = '';
   server.stdin.write(rpcMsg('prompts/get', { name: 'godot.unknown_prompt', arguments: {} }));
   await delay(1000);
-  const unknownPromptResponses = parseResponses(stdout);
+  const unknownPromptResponses = parseJsonLines(stdout);
   const unknownPromptError = unknownPromptResponses.find(response => response.error)?.error;
   if (unknownPromptError?.message?.includes('Unknown prompt')) {
     ok('prompts/get returns clear error for unknown prompt');
@@ -225,7 +205,7 @@ async function main() {
     stdout = '';
     server.stdin.write(rpcMsg('tools/call', { name: candidate, arguments: { limit: 20 } }));
     await delay(1000);
-    const catalogResponses = parseResponses(stdout);
+    const catalogResponses = parseJsonLines(stdout);
     const catalogResult = catalogResponses.find(response => response.result?.content);
     const parsedCatalog = parseTextContent(catalogResult);
     if (parsedCatalog && typeof parsedCatalog.totalTools === 'number') {
@@ -245,7 +225,7 @@ async function main() {
     stdout = '';
     server.stdin.write(rpcMsg('tools/call', { name: catalogToolName, arguments: { query: 'scene', limit: 20 } }));
     await delay(1000);
-    const knownToolResponses = parseResponses(stdout);
+    const knownToolResponses = parseJsonLines(stdout);
     const knownToolPayload = parseTextContent(knownToolResponses.find(response => response.result?.content));
     const catalogIncludesKnownTool = Array.isArray(knownToolPayload?.tools) && knownToolPayload.tools.some((entry) => {
       return expandToolCandidates('create_scene', 'scene.create').includes(entry?.tool)
@@ -270,7 +250,7 @@ async function main() {
       server.stdin.write(rpcMsg('tools/list', cursor ? { cursor } : {}));
       await delay(1500);
 
-      const responses = parseResponses(stdout);
+      const responses = parseJsonLines(stdout);
       const result = responses.find(response => response.result?.tools)?.result;
       if (!result?.tools) {
         throw new Error(`No valid tools/list response for page ${page}. stdout: ${stdout.substring(0, 500)}`);
@@ -361,7 +341,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const queryClassesResponses = parseResponses(stdout);
+  const queryClassesResponses = parseJsonLines(stdout);
   const queryClassesPayload = parseTextContent(queryClassesResponses.find(response => response.result?.content));
   if (queryClassesPayload && Array.isArray(queryClassesPayload.classes)) {
     ok(`query_classes returned structured JSON (${queryClassesPayload.classes.length} classes)`);
@@ -379,7 +359,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const queryClassInfoResponses = parseResponses(stdout);
+  const queryClassInfoResponses = parseJsonLines(stdout);
   const queryClassInfoPayload = parseTextContent(queryClassInfoResponses.find(response => response.result?.content));
   if (queryClassInfoPayload && queryClassInfoPayload.class_name === 'Node2D' && Array.isArray(queryClassInfoPayload.methods)) {
     ok(`query_class_info returned structured JSON (${queryClassInfoPayload.methods.length} methods)`);
@@ -399,7 +379,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const searchProjectResponses = parseResponses(stdout);
+  const searchProjectResponses = parseJsonLines(stdout);
   const searchProjectText = searchProjectResponses
     .flatMap((response) => response?.result?.content || [])
     .map((chunk) => chunk?.text || '')
@@ -419,7 +399,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const runtimeStatusResponses = parseResponses(stdout);
+  const runtimeStatusResponses = parseJsonLines(stdout);
   const runtimeStatusPayload = parseTextContent(runtimeStatusResponses.find(response => response.result?.content));
   if (runtimeStatusPayload?.connected === false && runtimeStatusPayload?.status === 'not_running') {
     ok('get_runtime_status reports not_running without runtime addon');
@@ -521,7 +501,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const runtimeConnectedResponses = parseResponses(stdout);
+  const runtimeConnectedResponses = parseJsonLines(stdout);
   const runtimeConnectedPayload = parseTextContent(runtimeConnectedResponses.find(response => response.result?.content));
   if (runtimeConnectedPayload?.connected === true && runtimeConnectedPayload?.runtimeAddon === 'connected') {
     ok('get_runtime_status reports connected when runtime addon responds to ping');
@@ -536,7 +516,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const inspectRuntimeResponses = parseResponses(stdout);
+  const inspectRuntimeResponses = parseJsonLines(stdout);
   const inspectRuntimePayload = parseTextContent(inspectRuntimeResponses.find(response => response.result?.content));
   if (inspectRuntimePayload?.type === 'tree' && inspectRuntimePayload?.root?.path === '/root') {
     ok('inspect_runtime_tree relays runtime tree data from addon');
@@ -551,7 +531,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const setRuntimePropertyResponses = parseResponses(stdout);
+  const setRuntimePropertyResponses = parseJsonLines(stdout);
   const setRuntimePropertyPayload = parseTextContent(setRuntimePropertyResponses.find(response => response.result?.content));
   if (setRuntimePropertyPayload?.type === 'property_set' && setRuntimePropertyPayload?.new_value === true) {
     ok('set_runtime_property relays addon property updates');
@@ -566,7 +546,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const callRuntimeMethodResponses = parseResponses(stdout);
+  const callRuntimeMethodResponses = parseJsonLines(stdout);
   const callRuntimeMethodPayload = parseTextContent(callRuntimeMethodResponses.find(response => response.result?.content));
   if (callRuntimeMethodPayload?.type === 'method_result' && Array.isArray(callRuntimeMethodPayload?.result?.echoed_args)) {
     ok('call_runtime_method relays addon method results');
@@ -581,7 +561,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const runtimeMetricsResponses = parseResponses(stdout);
+  const runtimeMetricsResponses = parseJsonLines(stdout);
   const runtimeMetricsPayload = parseTextContent(runtimeMetricsResponses.find(response => response.result?.content));
   if (runtimeMetricsPayload?.type === 'metrics' && runtimeMetricsPayload?.data?.fps === 60) {
     ok('get_runtime_metrics relays addon metrics');
@@ -596,7 +576,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const captureScreenshotResponses = parseResponses(stdout);
+  const captureScreenshotResponses = parseJsonLines(stdout);
   const captureScreenshotResult = captureScreenshotResponses.find(response => response.result?.content)?.result;
   const captureScreenshotContent = captureScreenshotResult?.content || [];
   const screenshotImage = captureScreenshotContent.find(chunk => chunk?.type === 'image');
@@ -613,7 +593,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const captureViewportResponses = parseResponses(stdout);
+  const captureViewportResponses = parseJsonLines(stdout);
   const captureViewportResult = captureViewportResponses.find(response => response.result?.content)?.result;
   const captureViewportContent = captureViewportResult?.content || [];
   const viewportImage = captureViewportContent.find(chunk => chunk?.type === 'image');
@@ -634,7 +614,7 @@ async function main() {
   }));
   await delay(1500);
 
-  const statusResponses = parseResponses(stdout);
+  const statusResponses = parseJsonLines(stdout);
   if (statusResponses.length > 0) {
     const res = statusResponses[0];
     if (res.result?.content) {
@@ -661,7 +641,7 @@ async function main() {
   }));
   await delay(2000);
 
-  const sceneResponses = parseResponses(stdout);
+  const sceneResponses = parseJsonLines(stdout);
   if (sceneResponses.length > 0) {
     const res = sceneResponses[0];
     if (res.result?.content) {
@@ -721,7 +701,7 @@ async function main() {
     }));
     await delay(1500);
 
-    const connStatusResponses = parseResponses(stdout);
+    const connStatusResponses = parseJsonLines(stdout);
     if (connStatusResponses.length > 0) {
       const text = connStatusResponses[0].result?.content?.map(c => c.text).join('') || '';
       try {
@@ -797,7 +777,7 @@ async function main() {
       await delay(1500);
 
       // Check MCP got the result
-      const toolResponses = parseResponses(stdout);
+      const toolResponses = parseJsonLines(stdout);
       if (toolResponses.length > 0) {
         const res = toolResponses[0];
         if (res.result?.content) {
@@ -840,7 +820,7 @@ async function main() {
     await delay(1200);
     ws.off('message', missingArgsCapture);
 
-    const missingArgsResponses = parseResponses(stdout);
+    const missingArgsResponses = parseJsonLines(stdout);
     const missingArgsError = missingArgsResponses.find(response => response.error)?.error;
     const missingArgsResultText = missingArgsResponses
       .flatMap((response) => response?.result?.content || [])
