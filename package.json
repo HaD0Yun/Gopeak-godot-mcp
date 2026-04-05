@@ -23,6 +23,7 @@
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:integration": "node test-bridge.mjs",
     "test:dynamic-groups": "node test-dynamic-groups.mjs",
+    "test:docs": "node test-readme-localization-consistency.mjs",
     "test:regressions": "node test-regressions.mjs",
     "test:ci": "npm run test:smoke && npm run test:regressions",
     "ci": "npm run build && npm run typecheck && npm run test:ci",

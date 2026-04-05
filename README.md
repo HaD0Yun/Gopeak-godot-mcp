@@ -10,9 +10,13 @@
 [![](https://img.shields.io/github/forks/HaD0Yun/Gopeak-godot-mcp 'Forks')](https://github.com/HaD0Yun/Gopeak-godot-mcp/network/members)
 [![](https://img.shields.io/badge/License-MIT-red.svg 'MIT License')](https://opensource.org/licenses/MIT)
 
+🌐 **Languages**: **English** | [한국어](README-ko.md) | [日本語](README-ja.md) | [Deutsch](README-de.md) | [Português](README-pt_BR.md) | [简体中文](README-zh.md)
+
 ![GoPeak Hero](assets/gopeak-hero-v2.png)
 
 **GoPeak is an MCP server for Godot that lets AI assistants run, inspect, modify, and debug real projects end-to-end.**
+
+> English is the canonical source of truth. Localized READMEs are concise overviews and may lag behind `README.md`.
 
 > Discord community chat is temporarily unavailable while the invite link is refreshed. Please use GitHub Discussions in the meantime: https://github.com/HaD0Yun/Gopeak-godot-mcp/discussions
 
