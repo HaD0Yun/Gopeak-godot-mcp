@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/had0yun-gopeak-godot-mcp-badge.png)](https://mseep.ai/app/had0yun-gopeak-godot-mcp)
+
 # GoPeak
 
 [![](https://badge.mcpx.dev?type=server 'MCP Server')](https://modelcontextprotocol.io/introduction)
