@@ -1250,7 +1250,7 @@ class GodotServer {
 
       try {
         const { stdout, stderr } = await execAsync(cmd);
-        return { stdout, stderr };
+        return { stdout, stderr: this.sanitizeGodotStderr(stderr) };
       } finally {
         rmSync(paramsDir, { recursive: true, force: true });
       }
@@ -1260,7 +1260,7 @@ class GodotServer {
         const execError = error as Error & { stdout: string; stderr: string };
         return {
           stdout: execError.stdout,
-          stderr: execError.stderr,
+          stderr: this.sanitizeGodotStderr(execError.stderr),
         };
       }
 
@@ -2649,6 +2649,31 @@ class GodotServer {
     }
 
     return null;
+  }
+
+  private sanitizeGodotStderr(stderr: string): string {
+    if (!stderr) {
+      return stderr;
+    }
+
+    const ignoredPatterns = [
+      /WARNING: ObjectDB instances leaked at exit/i,
+      /at:\s+cleanup\s+\(core\/object\/object\.cpp:/i,
+      /ERROR:\s+\d+\s+resources still in use at exit/i,
+      /at:\s+clear\s+\(core\/io\/resource\.cpp:/i,
+    ];
+
+    const filteredLines = stderr
+      .split(/\r?\n/)
+      .filter((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return false;
+        }
+        return !ignoredPatterns.some((pattern) => pattern.test(trimmed));
+      });
+
+    return filteredLines.join('\n').trim();
   }
 
   /**
