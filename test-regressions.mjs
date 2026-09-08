@@ -9,6 +9,7 @@ import { spawn } from 'node:child_process';
 import { spawnSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createBridge } from './build/godot-bridge.js';
+import { parseProjectGodot } from './build/resources.js';
 
 const INDEX_SOURCE = readFileSync(new URL('./src/index.ts', import.meta.url), 'utf8');
 const CLI_NOTIFY_SOURCE = readFileSync(new URL('./src/cli/notify.ts', import.meta.url), 'utf8');
@@ -210,6 +211,60 @@ async function testEditorStatusPortConflict() {
   });
 }
 
+function testProjectGodotMultilineValues() {
+  const parsed = parseProjectGodot(
+    [
+      '[input]',
+      '',
+      'move_left={',
+      '"deadzone": 0.2,',
+      '"events": [Object(InputEventKey,"physical_keycode":65)]',
+      '}',
+      '',
+      '[rendering]',
+      '',
+      'renderer/rendering_method="gl_compatibility"',
+      '',
+      '[misc]',
+      '',
+      'brace_in_string="{"',
+      'after_brace_in_string="kept"',
+      'inline_dict={"x": [1, 2], "y": {"z": 3}}',
+      'after_inline_dict=7',
+    ].join('\n'),
+  );
+
+  assert.equal(
+    parsed.input?.move_left,
+    '{\n"deadzone": 0.2,\n"events": [Object(InputEventKey,"physical_keycode":65)]\n}',
+    'multi-line dictionary values should be joined rather than truncated to their first line',
+  );
+  assert.equal(
+    parsed.rendering?.['renderer/rendering_method'],
+    'gl_compatibility',
+    'a section following a multi-line value should still be parsed',
+  );
+  assert.equal(
+    parsed.misc?.brace_in_string,
+    '{',
+    'a brace inside a quoted string should not start a continuation',
+  );
+  assert.equal(
+    parsed.misc?.after_brace_in_string,
+    'kept',
+    'a key after a quoted brace should survive',
+  );
+  assert.equal(
+    parsed.misc?.inline_dict,
+    '{"x": [1, 2], "y": {"z": 3}}',
+    'a balanced single-line dictionary should be left alone',
+  );
+  assert.equal(parsed.misc?.after_inline_dict, 7, 'a key after an inline dictionary should survive');
+
+  const unterminated = parseProjectGodot('[s]\nbroken={\n"k": 1\n');
+  assert.equal(typeof unterminated.s?.broken, 'string', 'an unterminated value should not hang');
+}
+
 async function main() {
   testStaleDisconnectRegression();
   testSceneToolsVectorRegression();
@@ -267,6 +322,7 @@ async function main() {
     'runtime key injection should treat string keycode values as key labels',
   );
 
+  testProjectGodotMultilineValues();
   await testEditorStatusPortConflict();
   console.log('regression tests passed');
 }
