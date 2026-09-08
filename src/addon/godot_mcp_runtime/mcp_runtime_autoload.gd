@@ -5,6 +5,8 @@ extends Node
 ## It starts a TCP server that the MCP server can connect to.
 
 const DEFAULT_PORT = 7777
+const DEFAULT_BIND_ADDRESS = "127.0.0.1"
+const BIND_ADDRESS_SETTING = "godot_mcp/runtime/bind_address"
 const PROTOCOL_VERSION = "1.0"
 
 var _server: TCPServer
@@ -68,8 +70,16 @@ func _process(_delta: float) -> void:
 
 
 func _start_server() -> void:
+	# The command set includes call_method, set_property and input injection, none of it
+	# authenticated, so a release export must not serve it.
+	if not OS.is_debug_build():
+		_enabled = false
+		return
+
 	_server = TCPServer.new()
-	var error = _server.listen(_port)
+	# listen() defaults bind_address to "*", which exposes the game to the whole network.
+	var bind_address = str(ProjectSettings.get_setting(BIND_ADDRESS_SETTING, DEFAULT_BIND_ADDRESS))
+	var error = _server.listen(_port, bind_address)
 	if error != OK:
 		push_error("[MCP Runtime] Failed to start server on port %d: %s" % [_port, error])
 		_enabled = false
