@@ -121,13 +121,47 @@ function ensureAllowedExtension(kind: 'scene' | 'script' | 'resource', filePath:
   }
 }
 
-function parseProjectGodot(content: string): Record<string, Record<string, string | number | boolean | null>> {
+// Godot writes dictionaries, arrays and Object(...) values across several lines, so a
+// value is only finished once its brackets balance outside of a string.
+function isValueComplete(value: string): boolean {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (const character of value) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (character === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) {
+      continue;
+    }
+    if (character === '{' || character === '[' || character === '(') {
+      depth += 1;
+    } else if (character === '}' || character === ']' || character === ')') {
+      depth -= 1;
+    }
+  }
+
+  return depth <= 0 && !inString;
+}
+
+export function parseProjectGodot(content: string): Record<string, Record<string, string | number | boolean | null>> {
   const result: Record<string, Record<string, string | number | boolean | null>> = {};
   let currentSection = 'root';
   result[currentSection] = {};
 
-  for (const rawLine of content.split(/\r?\n/)) {
-    const line = rawLine.trim();
+  const lines = content.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
     if (!line || line.startsWith(';') || line.startsWith('#')) {
       continue;
     }
@@ -146,7 +180,12 @@ function parseProjectGodot(content: string): Record<string, Record<string, strin
     }
 
     const key = line.slice(0, eqIndex).trim();
-    const rawValue = line.slice(eqIndex + 1).trim();
+    let rawValue = line.slice(eqIndex + 1).trim();
+
+    while (index + 1 < lines.length && !isValueComplete(rawValue)) {
+      index += 1;
+      rawValue += `\n${lines[index].trim()}`;
+    }
 
     result[currentSection][key] = parseIniLikeValue(rawValue);
   }
