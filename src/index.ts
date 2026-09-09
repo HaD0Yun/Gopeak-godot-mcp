@@ -4655,10 +4655,19 @@ class GodotServer {
         );
       }
 
+      // The operation script reads `max_depth` and `include_built_in`. These were sent as
+      // `depth` and `includeBuiltin`, which become `depth` and `include_builtin`, so
+      // neither ever arrived: depth always fell back to the script's own 10, and built-ins
+      // were skipped no matter what the caller asked for.
+      //
+      // A negative depth means unlimited in this tool's schema. The script has no notion of
+      // that and compares `current_depth >= max_depth`, so passing -1 straight through
+      // would return nothing at all.
+      const requested = args.depth !== undefined ? Number(args.depth) : -1;
       const params: any = {
         resourcePath: args.resourcePath,
-        depth: args.depth !== undefined ? args.depth : -1,
-        includeBuiltin: args.includeBuiltin || false,
+        maxDepth: Number.isFinite(requested) && requested >= 0 ? requested : 100,
+        includeBuiltIn: args.includeBuiltin || false,
       };
 
       const { stdout, stderr } = await this.executeOperation('get_dependencies', params, args.projectPath);
