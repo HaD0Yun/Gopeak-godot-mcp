@@ -70,6 +70,7 @@ func _init_tools() -> void:
 		"connect_signal": [_scene_tools, "connect_signal"],
 		"disconnect_signal": [_scene_tools, "disconnect_signal"],
 		"list_connections": [_scene_tools, "list_connections"],
+		"rescan_filesystem": [_scene_tools, "rescan_filesystem"],
 
 		# Resource tools
 		"create_resource": [_resource_tools, "create_resource"],
