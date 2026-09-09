@@ -11,10 +11,35 @@ type PendingRequest = {
 
 type DiagnosticsWaiter = {
   resolve: (diagnostics: unknown[]) => void;
+  reject: (reason?: unknown) => void;
   timer: NodeJS.Timeout;
 };
 
 type JsonRecord = Record<string, unknown>;
+
+const DIAGNOSTICS_TIMEOUT_MS = 5000;
+
+/**
+ * Normalise a file URI so the same file always produces the same key.
+ *
+ * Godot and Node spell a Windows path differently. Since Godot 4.5 the language server
+ * encodes URIs per RFC 3986, which percent-encodes the drive colon:
+ *
+ *   Godot: file:///C%3A/Users/me/game/player.gd
+ *   Node:  file:///C:/Users/me/game/player.gd    (pathToFileURL, per WHATWG URL)
+ *
+ * Both are valid and both name the same file, but they are not equal as strings, so a
+ * waiter registered under one is never found under the other. Decoding puts them in the
+ * same shape. On Linux and macOS there is no drive letter, the two already agree, and this
+ * is a no-op.
+ */
+function diagnosticsKey(uri: string): string {
+  try {
+    return decodeURIComponent(uri);
+  } catch {
+    return uri;
+  }
+}
 
 export class GodotLSPClient {
   private socket: Socket | null = null;
@@ -110,8 +135,9 @@ export class GodotLSPClient {
       }, 1000);
     });
 
-    this.rejectAllPending(new Error('Disconnected from Godot LSP'));
-    this.resolveAllDiagnosticsWaiters([]);
+    const disconnected = new Error('Disconnected from Godot LSP');
+    this.rejectAllPending(disconnected);
+    this.rejectAllDiagnosticsWaiters(disconnected);
   }
 
   private async ensureConnected(): Promise<void> {
@@ -265,10 +291,11 @@ export class GodotLSPClient {
           ? (paramsObject.diagnostics as unknown[])
           : [];
         if (typeof uri === 'string') {
-          const waiter = this.diagnosticsWaiters.get(uri);
+          const key = diagnosticsKey(uri);
+          const waiter = this.diagnosticsWaiters.get(key);
           if (waiter) {
             clearTimeout(waiter.timer);
-            this.diagnosticsWaiters.delete(uri);
+            this.diagnosticsWaiters.delete(key);
             waiter.resolve(diagnostics);
           }
         }
@@ -280,16 +307,18 @@ export class GodotLSPClient {
     this.connected = false;
     this.initialized = false;
     this.socket = null;
-    this.rejectAllPending(new Error(`Godot LSP connection error: ${error.message}`));
-    this.resolveAllDiagnosticsWaiters([]);
+    const failure = new Error(`Godot LSP connection error: ${error.message}`);
+    this.rejectAllPending(failure);
+    this.rejectAllDiagnosticsWaiters(failure);
   }
 
   private handleSocketClose(): void {
     this.connected = false;
     this.initialized = false;
     this.socket = null;
-    this.rejectAllPending(new Error('Godot LSP socket closed'));
-    this.resolveAllDiagnosticsWaiters([]);
+    const closed = new Error('Godot LSP socket closed');
+    this.rejectAllPending(closed);
+    this.rejectAllDiagnosticsWaiters(closed);
   }
 
   private rejectAllPending(error: Error): void {
@@ -300,10 +329,14 @@ export class GodotLSPClient {
     });
   }
 
-  private resolveAllDiagnosticsWaiters(diagnostics: unknown[]): void {
+  /**
+   * Fail every waiter, for the same reason the timeout does: a lost connection is not a
+   * file without problems, and resolving [] here reports one as the other.
+   */
+  private rejectAllDiagnosticsWaiters(error: Error): void {
     this.diagnosticsWaiters.forEach((waiter, uri) => {
       clearTimeout(waiter.timer);
-      waiter.resolve(diagnostics);
+      waiter.reject(error);
       this.diagnosticsWaiters.delete(uri);
     });
   }
@@ -388,21 +421,30 @@ export class GodotLSPClient {
     await this.ensureConnected();
     await this.ensureInitializedForFile(filePath);
 
-    const uri = this.toFileUri(filePath);
+    const key = diagnosticsKey(this.toFileUri(filePath));
 
-    const diagnosticsPromise = new Promise<unknown[]>((resolveDiagnostics) => {
-      const existing = this.diagnosticsWaiters.get(uri);
+    const diagnosticsPromise = new Promise<unknown[]>((resolveDiagnostics, rejectDiagnostics) => {
+      const existing = this.diagnosticsWaiters.get(key);
       if (existing) {
         clearTimeout(existing.timer);
       }
 
       const timer = setTimeout(() => {
-        this.diagnosticsWaiters.delete(uri);
-        resolveDiagnostics([]);
-      }, 5000);
+        this.diagnosticsWaiters.delete(key);
+        // Not an empty array. Godot publishes an empty diagnostics list for a file that
+        // really is clean, so resolving [] here makes a broken language server look
+        // exactly like healthy code, and the caller has no way to tell the two apart.
+        rejectDiagnostics(
+          new Error(
+            `Godot published no diagnostics for ${key} within ${DIAGNOSTICS_TIMEOUT_MS}ms. ` +
+              'The language server may not be running, or may not have this file in its workspace.',
+          ),
+        );
+      }, DIAGNOSTICS_TIMEOUT_MS);
 
-      this.diagnosticsWaiters.set(uri, {
+      this.diagnosticsWaiters.set(key, {
         resolve: resolveDiagnostics,
+        reject: rejectDiagnostics,
         timer,
       });
     });
@@ -411,10 +453,10 @@ export class GodotLSPClient {
       this.syncDocument(filePath, content);
       return await diagnosticsPromise;
     } catch (error) {
-      const waiter = this.diagnosticsWaiters.get(uri);
+      const waiter = this.diagnosticsWaiters.get(key);
       if (waiter) {
         clearTimeout(waiter.timer);
-        this.diagnosticsWaiters.delete(uri);
+        this.diagnosticsWaiters.delete(key);
       }
       throw error;
     }
