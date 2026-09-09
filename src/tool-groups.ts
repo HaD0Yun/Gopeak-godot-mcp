@@ -131,8 +131,8 @@ export const CORE_TOOL_GROUPS: Record<string, ToolGroupDefinition> = {
   },
   core_scene: {
     description: 'Scene creation, saving, node tree manipulation',
-    tools: ['create_scene', 'save_scene', 'list_scene_nodes', 'add_node', 'get_node_properties', 'set_node_properties', 'delete_node'],
-    keywords: ['scene', 'node', 'create scene', 'add node', 'delete node', 'node properties', 'scene tree'],
+    tools: ['create_scene', 'save_scene', 'list_scene_nodes', 'add_node', 'get_node_properties', 'set_node_properties', 'delete_node', 'rescan_filesystem'],
+    keywords: ['scene', 'node', 'create scene', 'add node', 'delete node', 'node properties', 'scene tree', 'rescan', 'refresh filesystem', 'reimport'],
   },
   core_script: {
     description: 'GDScript creation, modification, and analysis',

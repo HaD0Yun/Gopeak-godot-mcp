@@ -138,6 +138,7 @@ class GodotServer {
     'scene.create': 'create_scene',
     'scene.save': 'save_scene',
     'scene.nodes': 'list_scene_nodes',
+    'project.rescan': 'rescan_filesystem',
     'scene.node.add': 'add_node',
     'scene.node.properties': 'get_node_properties',
     'scene.node.set': 'set_node_properties',
@@ -1626,6 +1627,8 @@ class GodotServer {
           return await this.handleGetUid(request.params.arguments);
         case 'update_project_uids':
           return await this.handleUpdateProjectUids(request.params.arguments);
+        case 'rescan_filesystem':
+          return await this.handleRescanFilesystem(normalizedArgs);
         // Phase 1: Scene Operations handlers
         case 'list_scene_nodes':
           return await this.handleViaBridge('list_scene_nodes', normalizedArgs);
@@ -2020,6 +2023,45 @@ class GodotServer {
    * Route a tool call through the Godot Editor Plugin bridge (WebSocket).
    * Returns an error response if the editor is not connected.
    */
+  /**
+   * Rescan the project filesystem, and wait for the scan to finish.
+   *
+   * The waiting is here rather than in the addon because the editor-side tool executor
+   * takes a Dictionary back and not a coroutine, so the addon can only start the scan and
+   * report whether one is running. A caller that has just written a script needs the scan
+   * to have landed before the new class_name is resolvable, so this polls until it has.
+   */
+  private async handleRescanFilesystem(args: any): Promise<any> {
+    const timeoutMs = Number.isFinite(Number(args?.timeoutMs)) ? Number(args.timeoutMs) : 10000;
+    const started = Date.now();
+
+    const first = await this.handleViaBridge('rescan_filesystem', args);
+    if (first?.isError) {
+      return first;
+    }
+
+    let busy = true;
+    while (busy && Date.now() - started < timeoutMs) {
+      await new Promise((settle) => setTimeout(settle, 100));
+      const status = await this.godotBridge.invokeTool('rescan_filesystem', {
+        ...(args || {}),
+        statusOnly: true,
+      }) as Record<string, unknown>;
+      busy = Boolean(status?.scanning) || Boolean(status?.importing);
+    }
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify({
+        ok: !busy,
+        stillWorking: busy,
+        waitedMs: Date.now() - started,
+        note: busy
+          ? 'The editor was still scanning or importing when the wait ran out, so new files may not be visible yet.'
+          : undefined,
+      }, null, 2) }],
+    };
+  }
+
   private async handleViaBridge(toolName: string, args: any): Promise<any> {
     if (!this.godotBridge.isConnected()) {
       return {

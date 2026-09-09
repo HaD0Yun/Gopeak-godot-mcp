@@ -759,3 +759,30 @@ func list_connections(args: Dictionary) -> Dictionary:
 
 	root.queue_free()
 	return {"ok": true, "connections": connections}
+
+
+## Rescan the project filesystem, and report whether a scan is still running.
+##
+## The editor rescans when its window regains focus, so a script written by anything other
+## than the editor stays invisible until someone clicks on Godot. Until then its
+## `class_name` is missing from the global class list and the language server reports every
+## use of it as an unknown type, which is godotengine/godot#42786.
+##
+## Returns as soon as the scan is queued rather than awaiting it, because the tool executor
+## takes a Dictionary and not a coroutine. Pass `statusOnly` to poll without starting
+## another scan.
+func rescan_filesystem(args: Dictionary) -> Dictionary:
+	if not _editor_plugin:
+		return {"ok": false, "error": "Editor plugin unavailable"}
+
+	var filesystem := _editor_plugin.get_editor_interface().get_resource_filesystem()
+	if not bool(args.get("statusOnly", false)):
+		filesystem.scan()
+
+	# Importing is reported separately from scanning, and a class is not registered until
+	# both are done, so a caller watching only one of them can look too early.
+	return {
+		"ok": true,
+		"scanning": filesystem.is_scanning(),
+		"importing": filesystem.is_importing()
+	}

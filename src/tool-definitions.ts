@@ -457,6 +457,24 @@ export function buildToolDefinitions(godotBridgePort: number): MCPToolDefinition
         // Phase 1: Scene Operations (V3 Enhancement)
         // ============================================
         {
+          name: 'rescan_filesystem',
+          description: 'Rescans the project filesystem in the running editor so files written outside Godot become visible to it. Call this after creating or renaming a script that declares a class_name: until the editor scans, that class is missing from the global class list and lsp_get_diagnostics reports every use of it as an unknown type. The editor otherwise only scans when its window regains focus.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectPath: {
+                type: 'string',
+                description: 'Absolute path to project directory containing project.godot. Use the same path across all tool calls in a workflow.',
+              },
+              timeoutMs: {
+                type: 'number',
+                description: 'How long to wait for the scan to finish before returning anyway. Default 10000.',
+              },
+            },
+            required: ['projectPath'],
+          },
+        },
+        {
           name: 'list_scene_nodes',
           description: 'Returns complete scene tree structure with all nodes, types, and hierarchy. Use to understand scene organization before modifying. Returns nested tree with node paths.',
           inputSchema: {
