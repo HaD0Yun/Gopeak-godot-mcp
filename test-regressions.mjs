@@ -9,6 +9,7 @@ import { spawn } from 'node:child_process';
 import { spawnSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createBridge } from './build/godot-bridge.js';
+import { GodotLSPClient } from './build/lsp_client.js';
 
 const INDEX_SOURCE = readFileSync(new URL('./src/index.ts', import.meta.url), 'utf8');
 const CLI_NOTIFY_SOURCE = readFileSync(new URL('./src/cli/notify.ts', import.meta.url), 'utf8');
@@ -165,6 +166,123 @@ function testSceneToolsVectorRegression() {
   }
 }
 
+/**
+ * A stand-in for Godot's language server.
+ *
+ * `reply` decides what URI it publishes diagnostics under, which is the whole point: Godot
+ * does not echo back the URI the client sent, it builds its own.
+ */
+async function withFakeLanguageServer(publishUri, handler) {
+  const sockets = new Set();
+
+  const server = createServer((socket) => {
+    sockets.add(socket);
+    let buffer = '';
+
+    const send = (message) => {
+      const body = JSON.stringify(message);
+      socket.write(`Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`);
+    };
+
+    socket.on('data', (chunk) => {
+      buffer += chunk.toString();
+      while (true) {
+        const headerEnd = buffer.indexOf('\r\n\r\n');
+        if (headerEnd === -1) return;
+        const length = Number(/content-length:\s*(\d+)/i.exec(buffer.slice(0, headerEnd))?.[1]);
+        if (!Number.isFinite(length)) return;
+        const start = headerEnd + 4;
+        if (buffer.length < start + length) return;
+
+        const message = JSON.parse(buffer.slice(start, start + length));
+        buffer = buffer.slice(start + length);
+
+        if (message.method === 'initialize') {
+          send({ jsonrpc: '2.0', id: message.id, result: { capabilities: {} } });
+        } else if (message.method === 'textDocument/didOpen') {
+          const uri = publishUri(message.params.textDocument.uri);
+          if (uri !== null) {
+            send({
+              jsonrpc: '2.0',
+              method: 'textDocument/publishDiagnostics',
+              params: {
+                uri,
+                diagnostics: [{
+                  range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+                  message: 'Could not find type "Missing" in the current scope.',
+                  severity: 1,
+                  source: 'gdscript',
+                }],
+              },
+            });
+          }
+        }
+      }
+    });
+    socket.on('error', () => {});
+  });
+
+  await new Promise((ready) => server.listen(0, '127.0.0.1', ready));
+
+  try {
+    return await handler(server.address().port);
+  } finally {
+    for (const socket of sockets) socket.destroy();
+    await new Promise((closed) => server.close(closed));
+  }
+}
+
+/**
+ * Godot builds its own file URI rather than echoing the client's, and since 4.5 it encodes
+ * per RFC 3986, which escapes characters Node's pathToFileURL leaves bare. On Windows the
+ * real case is the drive colon: the client sends `file:///C:/game/player.gd` and Godot
+ * answers `file:///C%3A/game/player.gd`. Both name the same file and are not equal as
+ * strings, so a waiter keyed on one is never found under the other, the wait times out and
+ * every file comes back with no problems.
+ *
+ * Re-encoding one character of the basename reproduces exactly that mismatch on any
+ * platform, without needing a Windows drive letter to do it.
+ */
+async function testDiagnosticsSurviveUriReEncoding() {
+  const reEncodeFirstLetter = (uri) => {
+    const at = uri.lastIndexOf('/') + 1;
+    const code = uri.charCodeAt(at).toString(16).toUpperCase();
+    return `${uri.slice(0, at)}%${code}${uri.slice(at + 1)}`;
+  };
+
+  await withFakeLanguageServer(reEncodeFirstLetter, async (port) => {
+    const client = new GodotLSPClient(port, '127.0.0.1');
+    const diagnostics = await client.getDiagnostics(
+      join(tmpdir(), 'gopeak-lsp-regression', 'player.gd'),
+      'extends Node\n',
+    );
+
+    assert.equal(
+      diagnostics.length,
+      1,
+      'diagnostics published under a differently encoded but identical URI should still reach the caller',
+    );
+    await client.disconnect?.();
+  });
+}
+
+/**
+ * Godot publishes an empty diagnostics array for a file that really is clean, so a wait
+ * that gives up must not answer with one too. Reporting a dead language server as a clean
+ * file is the failure that hides itself.
+ */
+async function testDiagnosticsTimeoutIsNotAnEmptyResult() {
+  await withFakeLanguageServer(() => null, async (port) => {
+    const client = new GodotLSPClient(port, '127.0.0.1');
+    await assert.rejects(
+      () => client.getDiagnostics(join(tmpdir(), 'gopeak-lsp-regression', 'silent.gd'), 'extends Node\n'),
+      /published no diagnostics/,
+      'a diagnostics wait that times out should fail rather than report an empty result',
+    );
+    await client.disconnect?.();
+  });
+}
+
 async function testEditorStatusPortConflict() {
   await withOccupiedBridgePort(async () => {
     const proc = spawn(process.execPath, ['./build/index.js'], {
@@ -268,6 +386,8 @@ async function main() {
   );
 
   await testEditorStatusPortConflict();
+  await testDiagnosticsSurviveUriReEncoding();
+  await testDiagnosticsTimeoutIsNotAnEmptyResult();
   console.log('regression tests passed');
 }
 
