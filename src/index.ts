@@ -1110,9 +1110,18 @@ class GodotServer {
 
     const items = filtered.slice(0, limit).map((tool) => {
       const groupInfo = toolToGroup.get(tool.name) || null;
+      const compactAlias = reverseAlias.get(tool.name) || null;
       return {
         tool: tool.name,
-        compactAlias: reverseAlias.get(tool.name) || null,
+        compactAlias,
+        // The name to actually pass to tools/call. A tool without a compact alias is not
+        // uncallable: once its group is active it is exposed under its sanitized name,
+        // where underscores are hyphens. Reporting only a null alias reads as "this tool
+        // cannot be called", which is how it was read in #74.
+        callAs: compactAlias || this.sanitizeExportedToolName(tool.name),
+        requiresGroupActivation: Boolean(
+          !compactAlias && groupInfo?.type === 'dynamic' && !this.activeGroups.has(groupInfo.group),
+        ),
         group: groupInfo?.group || null,
         groupType: groupInfo?.type || null,
         description: tool.description,

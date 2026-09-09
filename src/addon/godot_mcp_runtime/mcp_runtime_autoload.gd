@@ -71,7 +71,12 @@ func _start_server() -> void:
 	_server = TCPServer.new()
 	var error = _server.listen(_port)
 	if error != OK:
-		push_error("[MCP Runtime] Failed to start server on port %d: %s" % [_port, error])
+		# A warning, not an error. The usual cause is that another instance of this project
+		# already owns the port, which happens every time a tool runs a headless operation
+		# while the game is open. This instance carries on without a runtime server, which
+		# is what it wants anyway, and callers treat any ERROR line on stderr as a failed
+		# operation, so reporting a handled condition as one breaks working tools.
+		push_warning("[MCP Runtime] Port %d is unavailable (%s), running without a server" % [_port, error])
 		_enabled = false
 	else:
 		print("[MCP Runtime] Server listening on port %d" % _port)
