@@ -1768,8 +1768,10 @@ func analyze_resource_dependencies(path: String, max_depth: int, current_depth: 
                 if not dep_path.begins_with("res://"):
                     continue
                 
-                # Skip built-in resources unless requested
-                if not include_built_in and (dep_path.contains("addons/") or dep_path.begins_with("res://.")):
+                # Skip engine-internal resources unless requested. `addons/` is not one of
+                # them: it is ordinary project content, and often shipping content, so
+                # treating it as built-in dropped every dependency of anything living there.
+                if not include_built_in and dep_path.begins_with("res://."):
                     continue
                 
                 # Skip if same as source

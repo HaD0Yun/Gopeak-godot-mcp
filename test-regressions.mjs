@@ -267,6 +267,17 @@ async function main() {
     'runtime key injection should treat string keycode values as key labels',
   );
 
+  assert.doesNotMatch(
+    OPERATIONS_SOURCE,
+    /include_built_in and \(dep_path\.contains\("addons\/"\)/,
+    'addons/ is project content and often ships, so dependency analysis must not skip it as built-in',
+  );
+  assert.match(
+    INDEX_SOURCE,
+    /maxDepth:[\s\S]*?includeBuiltIn:/,
+    'get_dependencies must send the names the operation script reads, max_depth and include_built_in',
+  );
+
   await testEditorStatusPortConflict();
   console.log('regression tests passed');
 }
